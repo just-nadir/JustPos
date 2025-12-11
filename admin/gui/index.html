@@ -78,41 +78,45 @@
             background: #9ca3af;
         }
 
-        .file-list {
-            border: 1px solid #e5e7eb;
-            border-radius: 8px;
-            overflow: hidden;
-            margin-bottom: 10px;
-        }
-
-        .file-item {
-            padding: 10px;
-            border-bottom: 1px solid #e5e7eb;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .file-item:last-child {
-            border-bottom: none;
-        }
-
-        .file-item:hover {
+        /* --- DRAG & DROP ZONE --- */
+        .drop-zone {
+            border: 2px dashed #d1d5db;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
             background: #f9fafb;
+            transition: all 0.2s;
+            cursor: pointer;
+            margin-bottom: 15px;
         }
 
-        .file-item.active {
+        .drop-zone:hover,
+        .drop-zone.dragover {
+            border-color: #2563eb;
             background: #eff6ff;
-            border-left: 4px solid #2563eb;
         }
 
-        .badge {
-            background: #e0f2fe;
-            color: #0369a1;
-            padding: 2px 8px;
-            border-radius: 99px;
-            font-size: 12px;
+        .drop-zone p {
+            margin: 0;
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .drop-zone strong {
+            display: block;
+            color: #1f2937;
+            margin-bottom: 4px;
+        }
+
+        .file-info {
+            display: none;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            padding: 10px;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #15803d;
         }
 
         #result {
@@ -135,19 +139,6 @@
             color: #b91c1c;
             border: 1px solid #fca5a5;
         }
-
-        .refresh-btn {
-            background: none;
-            color: #2563eb;
-            padding: 0;
-            width: auto;
-            font-size: 12px;
-            margin-left: auto;
-            display: block;
-            margin-bottom: 5px;
-            cursor: pointer;
-            text-decoration: underline;
-        }
     </style>
 </head>
 
@@ -156,16 +147,16 @@
         <h1>🔑 License Generator</h1>
 
         <div class="form-group">
-            <div style="display: flex; justify-content: space-between; align-items: baseline;">
-                <label>1. So'rov faylini tanlang (.hid)</label>
-                <button class="refresh-btn" onclick="scanFiles()">Yangilash 🔄</button>
+            <label>1. So'rov faylini tanlang (.hid)</label>
+
+            <div id="dropZone" class="drop-zone">
+                <strong>Click to Upload</strong>
+                <p>or drag and drop .hid file here</p>
             </div>
-            <div id="fileList" class="file-list">
-                <div style="padding: 10px; text-align: center; color: #6b7280; font-size: 13px;">Fayllar qidirilmoqda...
-                </div>
-            </div>
-            <div id="selectedFileInfo" style="font-size: 12px; color: #4b5563; margin-top: 5px; display: none;">
-                <b>HWID:</b> <span id="hwidDisplay">---</span>
+
+            <div id="selectedFileInfo" class="file-info">
+                <div>📁 <b>Fayl:</b> <span id="fileName">---</span></div>
+                <div style="margin-top:4px; color: #4b5563;">💻 <b>HWID:</b> <span id="hwidDisplay">---</span></div>
             </div>
         </div>
 
@@ -194,37 +185,57 @@
 
     <script>
         const { ipcRenderer } = require('electron');
-        let selectedFile = null;
+        let selectedFilePath = null;
 
-        async function scanFiles() {
-            const res = await ipcRenderer.invoke('scan-files');
-            const listEl = document.getElementById('fileList');
-            listEl.innerHTML = '';
+        const dropZone = document.getElementById('dropZone');
+        const fileInfo = document.getElementById('selectedFileInfo');
 
-            if (res.success && res.files.length > 0) {
-                res.files.forEach(f => {
-                    const div = document.createElement('div');
-                    div.className = 'file-item';
-                    div.innerHTML = `<span>📄</span> <div style="flex:1; overflow:hidden; text-overflow:ellipsis;">${f.name}</div>`;
-                    div.onclick = () => selectFile(div, f);
-                    listEl.appendChild(div);
-                });
-            } else {
-                listEl.innerHTML = '<div style="padding: 10px; text-align: center; color: #6b7280; font-size: 13px;">.hid fayllar topilmadi. Dastur papkasida JetPOS_*.hid fayllar borligiga ishonch hosil qiling.</div>';
-            }
-        }
-
-        async function selectFile(el, file) {
-            document.querySelectorAll('.file-item').forEach(e => e.classList.remove('active'));
-            el.classList.add('active');
-            selectedFile = file;
-
-            // HWID o'qish
-            const res = await ipcRenderer.invoke('read-hid', file.path);
+        // --- DRAG & DROP EVENTS ---
+        dropZone.addEventListener('click', async () => {
+            const res = await ipcRenderer.invoke('select-file');
             if (res.success) {
-                document.getElementById('selectedFileInfo').style.display = 'block';
+                handleFileSelection(res.path);
+            }
+        });
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+
+            if (e.dataTransfer.files.length > 0) {
+                const file = e.dataTransfer.files[0];
+                if (file.path.endsWith('.hid')) {
+                    handleFileSelection(file.path);
+                } else {
+                    alert("Faqat .hid fayl tanlang!");
+                }
+            }
+        });
+
+        async function handleFileSelection(path) {
+            selectedFilePath = path;
+
+            // Faylni o'qish va HWID olish
+            const res = await ipcRenderer.invoke('read-hid', path);
+
+            if (res.success) {
+                fileInfo.style.display = 'block';
+                document.getElementById('fileName').innerText = path.split(/[\\/]/).pop();
                 document.getElementById('hwidDisplay').innerText = res.data.hwid;
-                document.getElementById('genBtn').disabled = false;
+
+                dropZone.style.display = 'none'; // drop zonani yashirish (qayta tanlash uchun refresh qilish kerak yoki kichik tugma qo'yish mumkin, hozircha oddiy)
+            } else {
+                listEl.innerHTML = '<div style="padding: 10px; text-align: center; color: #6b7280; font-size: 13px;">.hid fayllar topilmadi. Dastur papkasida JustPOS_*.hid fayllar borligiga ishonch hosil qiling.</div>';
             }
         }
 
@@ -234,7 +245,7 @@
         }
 
         async function generate() {
-            if (!selectedFile) return;
+            if (!selectedFilePath) return;
             const clientName = document.getElementById('clientName').value;
             if (!clientName) return alert("Mijoz ismini kiriting!");
 
@@ -245,7 +256,7 @@
             document.getElementById('genBtn').innerText = "Yaratilmoqda...";
 
             const res = await ipcRenderer.invoke('generate', {
-                hidPath: selectedFile.path,
+                hidPath: selectedFilePath,
                 clientName,
                 type,
                 days
@@ -260,6 +271,7 @@
           <strong>✅ Muvaffaqiyatli!</strong><br>
           Fayl: ${res.filename}<br>
           <span style="font-size: 12px; color: #15803d;">Fayl dastur papkasiga saqlandi.</span>
+          <button onclick="location.reload()" style="margin-top:10px; width:auto; padding:5px 10px; font-size:12px;">Yana yaratish 🔄</button>
         `;
             } else {
                 resultEl.className = 'error';
@@ -268,11 +280,7 @@
 
             document.getElementById('genBtn').disabled = false;
             document.getElementById('genBtn').innerText = "Litsenziya Yaratish";
-            scanFiles(); // Refresh list to maybe show new files if logic changes, but mostly to reset state
         }
-
-        // Init
-        scanFiles();
     </script>
 </body>
 

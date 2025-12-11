@@ -2,17 +2,22 @@
 **Foydalanish bo'yicha qo'llanma (File-Based)**
 
 1.  **Request File Yaratish:**
-    *   Dasturni oching -> Sozlamalar -> Litsenziya.
-    *   `Litsenziya so'rovini yaratish (.hid)` tugmasini bosing.
-    *   Dastur papkasida (JustPos root) `JetPOS_XXXX-XXXX...hid` fayli paydo bo'ladi.
+    *   Dasturni oching. Litsenziya yo'q bo'lsa, avtomatik ravishda `JustPOS_XXXX.hid` fayli yaratiladi.
+    *   Yoki Sozlamalar -> Litsenziya -> `Litsenziya so'rovini yaratish` tugmasini bosing.
 
 2.  **Litsenziya Yaratish (Admin):**
-    *   terminalda: `node admin/generate_license.cjs`
-    *   Skript `.hid` faylini avtomatik topadi yoki yo'lini so'raydi.
-    *   Mijoz ismini va turini kiriting.
-    *   Natijada `JetPOS_XXXX-XXXX...license` fayli paydo bo'ladi.
+    *   `LicenseGenerator.bat` ni ishga tushiring.
+    *   Drag & Drop yoki fayl tanlash orqali `JustPOS_XXXX.hid` faylini yuklang.
+    *   `Litsenziya Yaratish` tugmasini bosing.
+    *   Natijada `JustPOS_XXXX.license` fayli paydo bo'ladi.
 
 3.  **Faollashtirish:**
-    *   `JetPOS_XXXX...license` faylini JustPos dasturi papkasiga (resources yoki exe yoniga) tashlang.
-    *   Dasturni yangilang (Refresh) yoki qayta oching.
+    *   `JustPOS_XXXX.license` faylini JustPos dasturi papkasiga tashlang.
+    *   "Litsenziya faylini tekshirish" tugmasini bosing yoki dasturni yangilang.
     *   Sozlamalar -> Litsenziya bo'limida "FAOL" deb chiqishi kerak.
+
+4.  **Blockirovkani Tekshirish:**
+    *   Litsenziya faylini o'chirib tashlang (Delete).
+    *   Dasturni oching. "Blocklangan" oynasi chiqishi kerak.
+    *   Faylni qaytarib qo'ying va "Litsenziya faylini tekshirish" tugmasini bosing.
+    *   Dastur ochilishi kerak.

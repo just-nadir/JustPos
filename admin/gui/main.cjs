@@ -45,7 +45,7 @@ ipcMain.handle('scan-files', () => {
     try {
         // Root papkani qidiramiz
         const files = fs.readdirSync(ROOT_DIR)
-            .filter(f => f.startsWith('JetPOS_') && f.endsWith('.hid'))
+            .filter(f => f.startsWith('JustPOS_') && f.endsWith('.hid'))
             .map(f => ({ name: f, path: path.join(ROOT_DIR, f) }));
         return { success: true, files };
     } catch (err) {
@@ -62,6 +62,20 @@ ipcMain.handle('read-hid', (event, filePath) => {
     } catch (err) {
         return { success: false, error: err.message };
     }
+});
+
+// 2.5 Fayl tanlash (Dialog)
+ipcMain.handle('select-file', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile'],
+        filters: [{ name: 'Request Files', extensions: ['hid'] }]
+    });
+
+    if (result.canceled || result.filePaths.length === 0) {
+        return { success: false, canceled: true };
+    }
+
+    return { success: true, path: result.filePaths[0] };
 });
 
 // 3. Litsenziya generatsiya qilish
@@ -103,7 +117,7 @@ ipcMain.handle('generate', (event, { hidPath, clientName, type, days }) => {
 
         // Yozish
         const finalContent = `${payloadBase64}.${signature}`;
-        const outputFileName = `JetPOS_${hidData.hwid}.license`;
+        const outputFileName = `JustPOS_${hidData.hwid}.license`;
         const outputPath = path.join(ROOT_DIR, outputFileName);
 
         fs.writeFileSync(outputPath, finalContent);

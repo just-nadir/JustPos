@@ -89,21 +89,24 @@ const licenseManager = {
     getHwid: () => getHardwareId(),
 
     /**
-     * Request fayl yaratish: JetPOS_HWID.hid
+     * Request fayl yaratish: JustPOS_HWID.hid
      */
     createRequestFile: () => {
         try {
             const hwid = getHardwareId();
-            const fileName = `JetPOS_${hwid}.hid`;
+            const fileName = `JustPOS_${hwid}.hid`;
             const filePath = path.join(CHECK_FILE_DIR, fileName);
 
-            const content = JSON.stringify({
-                product: 'JustPos',
-                hwid: hwid,
-                date: new Date().toISOString()
-            }, null, 2);
+            // Agar fayl allaqachon bo'lsa, qayta yozmaymiz (yoki yangilaymiz)
+            if (!fs.existsSync(filePath)) {
+                const content = JSON.stringify({
+                    product: 'JustPos',
+                    hwid: hwid,
+                    date: new Date().toISOString()
+                }, null, 2);
+                fs.writeFileSync(filePath, content);
+            }
 
-            fs.writeFileSync(filePath, content);
             return { success: true, path: filePath };
         } catch (error) {
             log.error('Request Create Error:', error);
@@ -113,15 +116,17 @@ const licenseManager = {
 
     /**
      * Litsenziyani tekshirish
-     * Izlaydi: JetPOS_<HWID>.license
+     * Izlaydi: JustPOS_<HWID>.license
      */
     checkLicense: () => {
         try {
             const hwid = getHardwareId();
-            const fileName = `JetPOS_${hwid}.license`;
+            const fileName = `JustPOS_${hwid}.license`;
             const filePath = path.join(CHECK_FILE_DIR, fileName);
 
             if (!fs.existsSync(filePath)) {
+                // AUTO-GEN: Litsenziya yo'q bo'lsa, avtomatik so'rov faylini yaratamiz
+                licenseManager.createRequestFile();
                 return { active: false, status: 'missing_file', hwid };
             }
 
