@@ -13,8 +13,11 @@ Loyiha faol rivojlanish bosqichida. Asosiy POS funksiyalari (savdo, kassa, print
 - [ ] Foydalanuvchi huquqlarini boshqarish tizimini takomillashtirish.
 
 ## Bajarilgan Ishlar (Yaqin orada)
-- [x] Yangi File-Based Litsenziya tizimi (HID -> License File).
-- [x] Admin License Generator vositasi.
+- [x] Yangi File-Based Litsenziya tizimi:
+    - [x] Backend (LicenseManager)
+    - [x] Admin GUI & Tools
+    - [x] Frontend (Settings & LicenseLock)
+    - [x] Auto-generation & Renaming (JustPOS)
 - [x] Eski litsenziya tizimi olib tashlandi.
 - [x] Memory Bank hujjatlari yaratildi.
 - [x] Waiter App uchun tarmoq muammosi hal qilindi.
