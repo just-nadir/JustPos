@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Users, Clock, ChevronLeft, ShoppingBag, Trash2, Plus, Minus,
   CheckCircle, X, LogOut, User, AlertTriangle, Hash, Lock,
-  LayoutGrid, UtensilsCrossed, ChefHat
+  LayoutGrid, UtensilsCrossed, ChefHat, Receipt
 } from 'lucide-react';
 
 import { useSocketData } from '../hooks/useSocketData';
@@ -17,9 +17,12 @@ import LicenseLock from '../components/LicenseLock'; // YANGI
 const WaiterApp = () => {
   const { user, login, logout, settings, showToast, license, checkLicense } = useGlobal(); // Global user state va license
 
-  const [view, setView] = useState('tables'); // 'tables', 'menu', 'cart'
+  const [view, setView] = useState('tables'); // 'tables', 'menu', 'cart', 'orders'
   const [filterMode, setFilterMode] = useState('all'); // 'all', 'mine', 'free'
   const [activeTable, setActiveTable] = useState(null);
+  const [tableOrders, setTableOrders] = useState([]); // YANGI: Stol buyurtmalari
+
+
 
   // Guest Modal logic
   const [showGuestModal, setShowGuestModal] = useState(false);
@@ -68,8 +71,17 @@ const WaiterApp = () => {
 
   // TABLE SELECTION LOGIC
   const handleTableClick = (table) => {
-    // 1. Agar stol bo'sh bo'lsa -> Mehmon soni so'raladi
+    // 1. Agar stol bo'sh bo'lsa
     if (table.status === 'free') {
+      // AGAR FOIZ BO'LSA -> MEHMON SONI SO'RALMAYDI (Default 1)
+      if (settings.serviceChargeType === 'percent') {
+        const tableWithDefault = { ...table, guests: 1 };
+        setActiveTable(tableWithDefault);
+        openMenu(tableWithDefault);
+        return;
+      }
+
+      // AGAR FIXED (Kishi boshiga) BO'LSA -> SO'RALADI
       setActiveTable(table);
       setGuestCount(2);
       setShowGuestModal(true);
@@ -100,6 +112,16 @@ const WaiterApp = () => {
     clearCart();
     setView('menu');
     loadMenu();
+    loadTableOrders(table.id);
+  };
+
+  const loadTableOrders = async (tableId) => {
+    try {
+      const res = await axios.get(`${API_URL}/tables/${tableId}/items`);
+      setTableOrders(res.data || []);
+    } catch (err) {
+      console.error("Orders load error:", err);
+    }
   };
 
   const sendOrder = async () => {
@@ -263,133 +285,177 @@ const WaiterApp = () => {
     );
   }
 
-  // --- MENU & CART VIEW (Improved UI) ---
+  // --- MENU & CART & ORDERS VIEW (Improved UI) ---
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden relative font-sans">
       <GuestModal />
       <ConfirmModal isOpen={showConfirmOrder} onClose={() => setShowConfirmOrder(false)} onConfirm={sendOrder} title="Tasdiqlash" message={`Jami: ${cartTotal.toLocaleString()} so'm`} confirmText="Yuborish" isDanger={false} />
 
       {/* Top Bar */}
-      <div className="bg-white px-4 pt-10 pb-4 shadow-sm border-b flex items-center gap-4 z-20 sticky top-0">
+      <div className="bg-white px-4 pt-10 pb-4 shadow-sm border-b flex items-center gap-2 z-20 sticky top-0">
         <button onClick={() => setView('tables')} className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center hover:bg-gray-200 active:scale-95 transition-all text-gray-700">
           <ChevronLeft size={28} />
         </button>
-        <div className="flex-1">
+        <div className="flex-1 overflow-hidden">
           <div className="flex items-center gap-2">
-            <h2 className="font-black text-xl text-gray-900 leading-none">{activeTable?.name}</h2>
+            <h2 className="font-black text-xl text-gray-900 leading-none truncate">{activeTable?.name}</h2>
             {activeTable?.current_check_number > 0 && (
-              <span className="text-xs font-black text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded">#{activeTable.current_check_number}</span>
+              <span className="text-xs font-black text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded shrink-0">#{activeTable.current_check_number}</span>
             )}
           </div>
+        </div>
+        {settings?.serviceChargeType === 'fixed' && (
           <div className="text-xs text-blue-600 font-bold mt-1 flex items-center gap-1">
             <Users size={12} /> {activeTable?.guests} mehmon
           </div>
-        </div>
+        )}
+
+        {/* Orders Toggle */}
+        <button onClick={() => {
+          if (view === 'orders') setView('menu');
+          else { loadTableOrders(activeTable.id); setView('orders'); }
+        }} className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-95 ${view === 'orders' ? 'bg-orange-500 text-white shadow-lg shadow-orange-200' : 'bg-gray-100 text-gray-600'}`}>
+          <Receipt size={24} />
+        </button>
 
         {/* Cart Toggle */}
-        <button onClick={() => setView(view === 'cart' ? 'menu' : 'cart')} className={`p-3 rounded-2xl relative transition-all active:scale-95 ${view === 'cart' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-100 text-gray-600'}`}>
+        <button onClick={() => setView(view === 'cart' ? 'menu' : 'cart')} className={`w-12 h-12 rounded-2xl relative transition-all active:scale-95 flex items-center justify-center ${view === 'cart' ? 'bg-blue-600 text-white shadow-lg shadow-blue-200' : 'bg-gray-100 text-gray-600'}`}>
           <ShoppingBag size={24} />
           {cartCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 flex items-center justify-center rounded-full border-2 border-white">{cartCount}</span>}
         </button>
       </div>
 
       {/* Content */}
-      {view === 'cart' ? (
-        <div className="flex-1 overflow-y-auto p-5 pb-40">
-          <h2 className="font-black text-2xl mb-6 text-gray-900">Savatcha</h2>
-          {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center mt-20 text-gray-300">
-              <ShoppingBag size={64} className="mb-4 opacity-20" />
-              <p className="font-bold">Hali hech narsa tanlanmadi</p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {cart.map(item => (
-                <div key={item.id} className="bg-white p-4 rounded-3xl shadow-sm flex justify-between items-center border border-gray-100">
-                  <div>
-                    <h3 className="font-bold text-gray-800 text-lg">{item.name}</h3>
-                    <p className="text-blue-600 font-bold">{item.price.toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl">
-                    <button onClick={() => removeFromCart(item.id)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-red-500 active:scale-90"><Minus size={20} /></button>
-                    <span className="font-black text-xl w-6 text-center">{item.qty}</span>
-                    <button onClick={() => addToCart(item)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-green-500 active:scale-90"><Plus size={20} /></button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Categories */}
-          <div className="bg-white pb-2 z-10">
-            <div className="flex overflow-x-auto px-4 py-2 gap-3 scrollbar-hide">
-              {categories.map(cat => (
-                <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
-                  className={`px-6 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${activeCategory === cat.id ? 'bg-gray-900 text-white shadow-lg' : 'bg-gray-100 text-gray-600'}`}>
-                  {cat.name}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Menu Grid */}
-          <div className="flex-1 overflow-y-auto p-4 pb-40">
-            {loading ? <div className="text-center py-10 text-gray-400">Yuklanmoqda...</div> : (
-              <div className="grid grid-cols-1 gap-3">
-                {products.filter(p => p.category_id === activeCategory).map(product => {
-                  const inCart = cart.find(c => c.id === product.id);
-                  return (
-                    <div key={product.id} onClick={() => addToCart(product)}
-                      className={`p-4 rounded-3xl flex justify-between items-center transition-all active:scale-95 border-2 
-                                        ${inCart ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-transparent shadow-sm'}`}>
-                      <div className="flex items-center gap-4">
-                        <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${inCart ? 'bg-blue-200' : 'bg-gray-100'}`}>
-                          {product.image ? <img src={product.image} className="w-full h-full object-cover rounded-2xl" /> : '🍳'}
-                        </div>
-                        <div>
-                          <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
-                          <p className="text-gray-500 font-medium">{product.price.toLocaleString()} so'm</p>
-                        </div>
-                      </div>
-                      {inCart ? (
-                        <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-lg shadow-blue-200">
-                          {inCart.qty}
-                        </div>
-                      ) : (
-                        <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                          <Plus size={24} />
-                        </button>
-                      )}
+      {
+        view === 'orders' ? (
+          <div className="flex-1 overflow-y-auto p-5 pb-40">
+            <h2 className="font-black text-2xl mb-6 text-gray-900">Stol Buyurtmalari</h2>
+            {tableOrders.length === 0 ? (
+              <div className="flex flex-col items-center justify-center mt-20 text-gray-300">
+                <Receipt size={64} className="mb-4 opacity-20" />
+                <p className="font-bold">Hali buyurtma berilmagan</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {tableOrders.map((item, idx) => (
+                  <div key={idx} className="bg-white p-4 rounded-3xl shadow-sm flex justify-between items-center border border-gray-100">
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-lg">{item.product_name}</h3>
+                      <p className="text-gray-400 text-sm">{item.price.toLocaleString()} x {item.quantity}</p>
                     </div>
-                  );
-                })}
+                    <div className="font-black text-xl text-gray-800">
+                      {(item.price * item.quantity).toLocaleString()}
+                    </div>
+                  </div>
+                ))}
+                <div className="mt-6 pt-4 border-t border-gray-200 flex justify-between items-center">
+                  <span className="font-bold text-gray-500">Jami:</span>
+                  <span className="font-black text-2xl text-blue-600">
+                    {tableOrders.reduce((acc, i) => acc + (i.price * i.quantity), 0).toLocaleString()}
+                  </span>
+                </div>
               </div>
             )}
           </div>
-        </>
-      )}
+        ) : view === 'cart' ? (
+          <div className="flex-1 overflow-y-auto p-5 pb-40">
+            <h2 className="font-black text-2xl mb-6 text-gray-900">Savatcha</h2>
+            {cart.length === 0 ? (
+              <div className="flex flex-col items-center justify-center mt-20 text-gray-300">
+                <ShoppingBag size={64} className="mb-4 opacity-20" />
+                <p className="font-bold">Hali hech narsa tanlanmadi</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {cart.map(item => (
+                  <div key={item.id} className="bg-white p-4 rounded-3xl shadow-sm flex justify-between items-center border border-gray-100">
+                    <div>
+                      <h3 className="font-bold text-gray-800 text-lg">{item.name}</h3>
+                      <p className="text-blue-600 font-bold">{item.price.toLocaleString()}</p>
+                    </div>
+                    <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl">
+                      <button onClick={() => removeFromCart(item.id)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-red-500 active:scale-90"><Minus size={20} /></button>
+                      <span className="font-black text-xl w-6 text-center">{item.qty}</span>
+                      <button onClick={() => addToCart(item)} className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm text-green-500 active:scale-90"><Plus size={20} /></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <>
+            {/* Categories */}
+            <div className="bg-white pb-2 z-10">
+              <div className="flex overflow-x-auto px-4 py-2 gap-3 scrollbar-hide">
+                {categories.map(cat => (
+                  <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+                    className={`px-6 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${activeCategory === cat.id ? 'bg-gray-900 text-white shadow-lg' : 'bg-gray-100 text-gray-600'}`}>
+                    {cat.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Menu Grid */}
+            <div className="flex-1 overflow-y-auto p-4 pb-40">
+              {loading ? <div className="text-center py-10 text-gray-400">Yuklanmoqda...</div> : (
+                <div className="grid grid-cols-1 gap-3">
+                  {products.filter(p => p.category_id === activeCategory).map(product => {
+                    const inCart = cart.find(c => c.id === product.id);
+                    return (
+                      <div key={product.id} onClick={() => addToCart(product)}
+                        className={`p-4 rounded-3xl flex justify-between items-center transition-all active:scale-95 border-2 
+                                        ${inCart ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-transparent shadow-sm'}`}>
+                        <div className="flex items-center gap-4">
+                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${inCart ? 'bg-blue-200' : 'bg-gray-100'}`}>
+                            {product.image ? <img src={product.image} className="w-full h-full object-cover rounded-2xl" /> : '🍳'}
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
+                            <p className="text-gray-500 font-medium">{product.price.toLocaleString()} so'm</p>
+                          </div>
+                        </div>
+                        {inCart ? (
+                          <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-lg shadow-blue-200">
+                            {inCart.qty}
+                          </div>
+                        ) : (
+                          <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                            <Plus size={24} />
+                          </button>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </>
+        )
+      }
 
       {/* Bottom Action Bar */}
-      {cart.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-[2rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-30">
-          <div className="flex justify-between items-center mb-4 px-2">
-            <span className="text-gray-400 font-bold">{cartCount} xil taom</span>
-            <span className="text-2xl font-black text-gray-900">{cartTotal.toLocaleString()} so'm</span>
+      {
+        cart.length > 0 && (
+          <div className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-[2rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-30">
+            <div className="flex justify-between items-center mb-4 px-2">
+              <span className="text-gray-400 font-bold">{cartCount} xil taom</span>
+              <span className="text-2xl font-black text-gray-900">{cartTotal.toLocaleString()} so'm</span>
+            </div>
+            {view === 'cart' ? (
+              <button onClick={() => setShowConfirmOrder(true)} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-bold text-xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
+                <ChefHat size={24} /> Buyurtma Berish
+              </button>
+            ) : (
+              <button onClick={() => setView('cart')} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-3">
+                Savatchaga O'tish
+              </button>
+            )}
           </div>
-          {view === 'cart' ? (
-            <button onClick={() => setShowConfirmOrder(true)} className="w-full bg-gray-900 text-white py-5 rounded-2xl font-bold text-xl shadow-xl active:scale-95 transition-transform flex items-center justify-center gap-3">
-              <ChefHat size={24} /> Buyurtma Berish
-            </button>
-          ) : (
-            <button onClick={() => setView('cart')} className="w-full bg-blue-600 text-white py-5 rounded-2xl font-bold text-xl shadow-xl shadow-blue-200 active:scale-95 transition-transform flex items-center justify-center gap-3">
-              Savatchaga O'tish
-            </button>
-          )}
-        </div>
-      )}
-    </div>
+        )
+      }
+    </div >
   );
 };
 

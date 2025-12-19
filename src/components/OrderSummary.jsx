@@ -1,30 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Users, User, Wallet, X, Printer, Hash } from 'lucide-react';
+import { CreditCard, Users, User, Wallet, X, Printer, Hash, Trash2 } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import CustomerModal from './CustomerModal';
+import ConfirmModal from './ConfirmModal';
+import { useGlobal } from '../context/GlobalContext';
 
 const OrderSummary = ({ table, onDeselect }) => {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [isCustomerModalOpen, setIsCustomerModalOpen] = useState(false);
+  const [isCancelModalOpen, setIsCancelModalOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [bonusToUse, setBonusToUse] = useState(0);
   const [orderItems, setOrderItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [printingCheck, setPrintingCheck] = useState(false);
 
-  const [settings, setSettings] = useState({});
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      if (!window.electron) return;
-      try {
-        const { ipcRenderer } = window.electron;
-        const data = await ipcRenderer.invoke('get-settings');
-        setSettings(data);
-      } catch (err) { console.error(err); }
-    };
-    loadSettings();
-  }, []);
+
+  const { settings } = useGlobal(); // Use global settings
 
   useEffect(() => {
     setSelectedCustomer(null);
@@ -67,6 +60,20 @@ const OrderSummary = ({ table, onDeselect }) => {
       alert(`Xato: ${error.message}`);
     } finally {
       setPrintingCheck(false);
+    }
+  };
+
+  const handleCancelOrder = async () => {
+    if (!table || !window.electron) return;
+    try {
+      const { ipcRenderer } = window.electron;
+      const result = await ipcRenderer.invoke('cancel-order', table.id);
+      if (result.success) {
+        if (onDeselect) onDeselect();
+      }
+    } catch (error) {
+      console.error("Cancel error:", error);
+      alert("Xatolik yuz berdi: " + error.message);
     }
   };
 
@@ -198,9 +205,12 @@ const OrderSummary = ({ table, onDeselect }) => {
           </div>
 
           <div className="flex justify-between items-center mt-2">
-            <div className="flex items-center gap-2 text-gray-500 text-sm">
-              <Users size={14} /> <span>{guestsCount} mehmon</span>
-            </div>
+            {settings.serviceChargeType === 'fixed' && (
+              <div className="flex items-center gap-2 text-gray-500 text-sm">
+                <Users size={14} /> <span>{guestsCount} mehmon</span>
+              </div>
+            )}
+            {settings.serviceChargeType !== 'fixed' && <div></div>} {/* Spacer if hidden */}
             <span className={`px-2 py-0.5 rounded text-xs font-bold uppercase
               ${table.status === 'occupied' ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700'}`}>
               {table.status === 'occupied' ? 'Band' : 'To\'lov'}
@@ -277,10 +287,18 @@ const OrderSummary = ({ table, onDeselect }) => {
 
         {/* BUTTONS */}
         <div className="p-4 border-t border-gray-100 space-y-3 bg-white">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-2">
+            <button
+              onClick={() => setIsCancelModalOpen(true)}
+              disabled={!table || orderItems.length === 0}
+              className={`flex items-center justify-center gap-1 py-3 border-2 rounded-xl font-bold transition-colors ${!table || orderItems.length === 0 ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed' : 'bg-white border-red-100 text-red-600 hover:bg-red-50 hover:border-red-200'}`}
+              title="Buyurtmani bekor qilish"
+            >
+              <Trash2 size={20} />
+            </button>
             <button
               onClick={() => setIsCustomerModalOpen(true)}
-              className={`flex items-center justify-center gap-2 py-3 border-2 rounded-xl font-bold transition-colors ${selectedCustomer ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-100 text-gray-700 hover:bg-gray-50'}`}
+              className={`col-span-1 flex items-center justify-center gap-2 py-3 border-2 rounded-xl font-bold transition-colors ${selectedCustomer ? 'bg-blue-50 border-blue-200 text-blue-700' : 'bg-white border-gray-100 text-gray-700 hover:bg-gray-50'}`}
             >
               <User size={20} /> {selectedCustomer ? 'Almashtirish' : 'Mijoz'}
             </button>
@@ -288,8 +306,8 @@ const OrderSummary = ({ table, onDeselect }) => {
               onClick={handlePrintCheck}
               disabled={handlePrintCheckDisabled()}
               className={`flex items-center justify-center gap-2 py-3 border-2 rounded-xl font-bold transition-colors ${handlePrintCheckDisabled()
-                  ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                  : 'bg-white border-gray-100 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
+                ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-white border-gray-100 text-gray-700 hover:bg-yellow-50 hover:text-yellow-700 hover:border-yellow-200'
                 }`}
             >
               <Printer size={20} /> {printingCheck ? 'Chop...' : 'Chek'}
@@ -312,6 +330,17 @@ const OrderSummary = ({ table, onDeselect }) => {
         selectedCustomer={selectedCustomer}
       />
       <CustomerModal isOpen={isCustomerModalOpen} onClose={() => setIsCustomerModalOpen(false)} onSelectCustomer={setSelectedCustomer} />
+
+      <ConfirmModal
+        isOpen={isCancelModalOpen}
+        onClose={() => setIsCancelModalOpen(false)}
+        onConfirm={handleCancelOrder}
+        title="Buyurtmani bekor qilish"
+        message="Haqiqatan ham bu stol buyurtmasini butunlay o'chirib tashlamoqchimisiz? Bu amalni ortga qaytarib bo'lmaydi."
+        confirmText="Ha, o'chirish"
+        cancelText="Yo'q, qolsin"
+        isDanger={true}
+      />
     </>
   );
 };

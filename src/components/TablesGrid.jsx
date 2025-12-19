@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Clock, Receipt, Hash, User } from 'lucide-react';
-import { useIpcListener } from '../hooks/useIpcListener'; // YANGI HOOK
+import axios from 'axios';
+import {
+  Users, Clock, Receipt, Hash, User
+} from 'lucide-react';
+import { useIpcListener } from '../hooks/useIpcListener';
+import { useGlobal } from '../context/GlobalContext';
 
 const TablesGrid = ({ onSelectTable }) => {
   const [tables, setTables] = useState([]);
   const [halls, setHalls] = useState([]);
   const [activeHallId, setActiveHallId] = useState('all');
   const [loading, setLoading] = useState(true);
+
+  // Settings ni global contextdan olamiz
+  const { settings } = useGlobal(); // <-- GlobalContext dan settings ni oldik
 
   // Ma'lumotlarni yuklash
   const loadData = async () => {
@@ -126,7 +133,11 @@ const TablesGrid = ({ onSelectTable }) => {
                 <div className="flex items-center gap-3 text-xs text-gray-400 font-medium">
                   <div className="flex items-center gap-1"><Clock size={12} /> {table.start_time || '--:--'}</div>
                   <div className="w-px h-3 bg-gray-300"></div>
-                  <div className="flex items-center gap-1"><Users size={12} /> {table.guests}</div>
+                  {/* Agar fixed bo'lsa yoki mehmon soni > 0 bo'lsa ko'rsatamiz */}
+                  {/* Agar fixed bo'lsa ko'rsatamiz */}
+                  {settings.serviceChargeType === 'fixed' && (
+                    <div className="flex items-center gap-1"><Users size={12} /> {table.guests}</div>
+                  )}
                 </div>
               </div>
 

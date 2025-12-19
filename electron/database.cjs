@@ -162,6 +162,19 @@ function initDB() {
       )
     `).run();
 
+    // 5.1 Bekor qilingan buyurtmalar (YANGI)
+    db.prepare(`
+      CREATE TABLE IF NOT EXISTS cancelled_orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_id INTEGER,
+        date TEXT,
+        total_amount REAL,
+        waiter_name TEXT,
+        items_json TEXT, -- Nimalar o'chirilgani
+        reason TEXT
+      )
+    `).run();
+
     // 6. Xodimlar
     db.prepare(`
       CREATE TABLE IF NOT EXISTS users (

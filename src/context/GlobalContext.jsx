@@ -1,4 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
+import axios from 'axios';
 
 const GlobalContext = createContext();
 
@@ -56,7 +57,20 @@ export const GlobalProvider = ({ children }) => {
           setLoading(false);
         }
       } else {
-        setLoading(false);
+        // Browser Mode (Mobile) - API orqali yuklash
+        try {
+          const API_PORT = 3000;
+          const protocol = window.location.protocol;
+          const hostname = window.location.hostname;
+          const apiUrl = `${protocol}//${hostname}:${API_PORT}/api/settings`;
+
+          const res = await axios.get(apiUrl);
+          setSettings(res.data || {});
+        } catch (err) {
+          console.error("Browser Settings Load Error:", err);
+        } finally {
+          setLoading(false);
+        }
       }
     };
     initApp();

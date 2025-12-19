@@ -336,5 +336,62 @@ module.exports = {
             log.error("getSales xatosi:", err);
             throw err;
         }
+    },
+
+    cancelOrder: (tableId) => {
+        try {
+            const cancelTransaction = db.transaction(() => {
+                // 1. O'chirilayotgan narsalarni olish
+                const items = db.prepare('SELECT * FROM order_items WHERE table_id = ?').all(tableId);
+                const table = db.prepare('SELECT waiter_name, total_amount, name FROM tables WHERE id = ?').get(tableId);
+
+                if (items.length > 0) {
+                    // 2. Bekor qilinganlar ro'yxatiga qo'shish
+                    const cancelledData = {
+                        table_id: tableId,
+                        date: new Date().toISOString(),
+                        total_amount: table ? table.total_amount : 0,
+                        waiter_name: table ? table.waiter_name : "Noma'lum",
+                        items_json: JSON.stringify(items),
+                        reason: "Kassir tomonidan o'chirildi"
+                    };
+
+                    db.prepare(`INSERT INTO cancelled_orders (table_id, date, total_amount, waiter_name, items_json, reason) VALUES (?, ?, ?, ?, ?, ?)`).run(
+                        cancelledData.table_id, cancelledData.date, cancelledData.total_amount, cancelledData.waiter_name, cancelledData.items_json, cancelledData.reason
+                    );
+                }
+
+                // 3. Tozalash
+                db.prepare('DELETE FROM order_items WHERE table_id = ?').run(tableId);
+                db.prepare("UPDATE tables SET status = 'free', guests = 0, start_time = NULL, total_amount = 0, current_check_number = 0, waiter_id = 0, waiter_name = NULL WHERE id = ?").run(tableId);
+            });
+
+            cancelTransaction();
+            notify('tables', null);
+            notify('table-items', tableId);
+            log.info(`Stol #${tableId} buyurtmasi bekor qilindi va arxivlandi`);
+            return { success: true };
+        } catch (err) {
+            log.error("Order cancel error:", err);
+            throw err;
+        }
+    },
+
+    getCancelledOrders: (startDate, endDate) => {
+        try {
+            if (!startDate || !endDate) {
+                return db.prepare('SELECT * FROM cancelled_orders ORDER BY date DESC LIMIT 100').all();
+            }
+            const query = `
+            SELECT * FROM cancelled_orders 
+            WHERE datetime(date, 'localtime') >= datetime(?) 
+              AND datetime(date, 'localtime') <= datetime(?)
+            ORDER BY date DESC
+            `;
+            return db.prepare(query).all(startDate, endDate);
+        } catch (err) {
+            log.error("getCancelledOrders xatosi:", err);
+            throw err;
+        }
     }
 };

@@ -76,8 +76,14 @@ function registerIpcHandlers(ipcMain) {
         return await orderController.checkout(data);
     });
 
+    // YANGI: Buyurtmani bekor qilish
+    ipcMain.handle('cancel-order', async (e, tableId) => {
+        return orderController.cancelOrder(tableId);
+    });
+
     // Hisobotlar uchun
     ipcMain.handle('get-sales', (e, { startDate, endDate }) => orderController.getSales(startDate, endDate));
+    ipcMain.handle('get-cancelled-orders', (e, { startDate, endDate }) => orderController.getCancelledOrders(startDate, endDate));
 
     // ==========================================
     // 5. CUSTOMERS & DEBTORS (Mijozlar va Qarzdorlar)

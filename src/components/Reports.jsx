@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, 
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, AreaChart, Area
 } from 'recharts';
-import { 
-  LayoutDashboard, Users, UtensilsCrossed, History, Calendar, 
-  Download, Filter, TrendingUp, DollarSign, CreditCard, 
-  ShoppingBag, Search, ChevronRight, ArrowUpRight, ArrowDownRight 
+import {
+  LayoutDashboard, Users, UtensilsCrossed, History, Calendar,
+  Download, Filter, TrendingUp, DollarSign, CreditCard,
+  ShoppingBag, Search, ChevronRight, ArrowUpRight, ArrowDownRight, Trash2
 } from 'lucide-react';
+import { useGlobal } from '../context/GlobalContext';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']; // Moviy, Yashil, Sariq, Qizil, Binafsha
 
@@ -21,10 +22,12 @@ const getTodayDate = () => {
 };
 
 const Reports = () => {
-  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, staff, products, history
+  const { settings } = useGlobal(); // <-- Global settings
+  const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, staff, products, history, trash
   const [salesData, setSalesData] = useState([]);
+  const [cancelledData, setCancelledData] = useState([]);
   const [loading, setLoading] = useState(false);
-  
+
   // YANGILANDI: Default qiymat har safar bugungi sana
   const [dateRange, setDateRange] = useState({
     startDate: getTodayDate(),
@@ -41,16 +44,20 @@ const Reports = () => {
     setLoading(true);
     try {
       const { ipcRenderer } = window.electron;
-      // Kun oxirigacha bo'lgan vaqtni qamrab olish
       const range = {
         startDate: `${dateRange.startDate}T00:00:00.000Z`,
         endDate: `${dateRange.endDate}T23:59:59.999Z`
       };
-      
-      const data = await ipcRenderer.invoke('get-sales', range);
-      setSalesData(data || []);
-    } catch (err) { 
-      console.error(err); 
+
+      const [sData, cData] = await Promise.all([
+        ipcRenderer.invoke('get-sales', range),
+        ipcRenderer.invoke('get-cancelled-orders', range)
+      ]);
+
+      setSalesData(sData || []);
+      setCancelledData(cData || []);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -111,13 +118,13 @@ const Reports = () => {
       // Waiter Stats (Updated)
       const waiter = sale.waiter_name || "Noma'lum";
       if (!waiterMap[waiter]) {
-          waiterMap[waiter] = { 
-              name: waiter, 
-              revenue: 0, 
-              count: 0, 
-              guests: 0, // Mehmonlar soni
-              service: 0 // Xizmat haqi
-          };
+        waiterMap[waiter] = {
+          name: waiter,
+          revenue: 0,
+          count: 0,
+          guests: 0, // Mehmonlar soni
+          service: 0 // Xizmat haqi
+        };
       }
       waiterMap[waiter].revenue += amount;
       waiterMap[waiter].count += 1;
@@ -140,7 +147,7 @@ const Reports = () => {
           productMap[pName].qty += (item.quantity || item.qty);
           productMap[pName].revenue += (item.price * (item.quantity || item.qty));
         });
-      } catch (e) {}
+      } catch (e) { }
     });
 
     return {
@@ -196,13 +203,13 @@ const Reports = () => {
               <AreaChart data={stats.hourlySales}>
                 <defs>
                   <linearGradient id="colorAmount" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0}/>
+                    <stop offset="5%" stopColor="#3B82F6" stopOpacity={0.8} />
+                    <stop offset="95%" stopColor="#3B82F6" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{fontSize: 12}} />
-                <YAxis tickFormatter={(val) => `${val/1000}k`} tick={{fontSize: 12}} />
+                <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fontSize: 12 }} />
+                <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} labelFormatter={(label) => `${label}:00`} />
                 <Area type="monotone" dataKey="amount" stroke="#3B82F6" fillOpacity={1} fill="url(#colorAmount)" strokeWidth={3} />
               </AreaChart>
@@ -232,15 +239,15 @@ const Reports = () => {
                   ))}
                 </Pie>
                 <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} />
-                <Legend verticalAlign="bottom" height={36}/>
+                <Legend verticalAlign="bottom" height={36} />
               </PieChart>
             </ResponsiveContainer>
             {/* Center Text */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
-               <div className="text-center">
-                 <span className="text-xs text-gray-400 font-bold block">JAMI</span>
-                 <span className="text-sm font-bold text-gray-800">{stats.totalRevenue.toLocaleString()}</span>
-               </div>
+              <div className="text-center">
+                <span className="text-xs text-gray-400 font-bold block">JAMI</span>
+                <span className="text-sm font-bold text-gray-800">{stats.totalRevenue.toLocaleString()}</span>
+              </div>
             </div>
           </div>
         </div>
@@ -256,7 +263,10 @@ const Reports = () => {
           <tr>
             <th className="px-6 py-4 font-bold text-gray-600 text-sm">Ofitsiant Ismi</th>
             <th className="px-6 py-4 font-bold text-gray-600 text-sm text-center">Cheklar</th>
-            <th className="px-6 py-4 font-bold text-gray-600 text-sm text-center">Mehmonlar</th>
+            {/* Agar percent bo'lsa mehmonlar soni ko'rsatilmaydi */}
+            {settings.serviceChargeType === 'fixed' && (
+              <th className="px-6 py-4 font-bold text-gray-600 text-sm text-center">Mehmonlar</th>
+            )}
             <th className="px-6 py-4 font-bold text-gray-600 text-sm text-right">Xizmat Haqi</th>
             <th className="px-6 py-4 font-bold text-gray-600 text-sm text-right">Jami Savdo</th>
           </tr>
@@ -271,7 +281,9 @@ const Reports = () => {
                 {w.name}
               </td>
               <td className="px-6 py-4 text-center text-gray-600">{w.count} ta</td>
-              <td className="px-6 py-4 text-center font-bold text-blue-600">{w.guests} kishi</td>
+              {settings.serviceChargeType === 'fixed' && (
+                <td className="px-6 py-4 text-center font-bold text-blue-600">{w.guests} kishi</td>
+              )}
               <td className="px-6 py-4 text-right font-medium text-orange-600">{Math.round(w.service).toLocaleString()}</td>
               <td className="px-6 py-4 text-right font-bold text-gray-800">{w.revenue.toLocaleString()}</td>
             </tr>
@@ -330,17 +342,17 @@ const Reports = () => {
             <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
               <td className="px-6 py-4 font-mono text-gray-500 text-sm">#{sale.check_number || sale.id}</td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                <div className="font-bold text-gray-800">{new Date(sale.date).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</div>
+                <div className="font-bold text-gray-800">{new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
                 <div className="text-xs text-gray-400">{new Date(sale.date).toLocaleDateString()}</div>
               </td>
               <td className="px-6 py-4 font-medium text-gray-800">{sale.waiter_name || "Kassir"}</td>
               <td className="px-6 py-4 text-center text-sm font-bold text-blue-600">{sale.guest_count || '-'}</td>
-              <td className="px-6 py-4 text-sm text-gray-600">{sale.customer_id ? "Mijoz (ID: "+sale.customer_id+")" : "-"}</td>
+              <td className="px-6 py-4 text-sm text-gray-600">{sale.customer_id ? "Mijoz (ID: " + sale.customer_id + ")" : "-"}</td>
               <td className="px-6 py-4">
                 <span className={`px-2 py-1 rounded text-xs font-bold uppercase
                   ${sale.payment_method === 'cash' ? 'bg-green-100 text-green-700' :
                     sale.payment_method === 'card' ? 'bg-blue-100 text-blue-700' :
-                    sale.payment_method === 'debt' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
+                      sale.payment_method === 'debt' ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'}`}>
                   {sale.payment_method || 'Naqd'}
                 </span>
               </td>
@@ -348,6 +360,46 @@ const Reports = () => {
             </tr>
           ))}
           {salesData.length === 0 && <tr><td colSpan="7" className="p-8 text-center text-gray-400">Hech qanday savdo tarixi yo'q</td></tr>}
+        </tbody>
+      </table>
+    </div>
+  );
+
+  // 5. CANCELLED ORDERS TAB
+  const renderCancelledOrders = () => (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden animate-in fade-in duration-300">
+      <table className="w-full text-left">
+        <thead className="bg-red-50 border-b border-gray-200">
+          <tr>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm w-20">ID</th>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm">Vaqt</th>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm">Ofitsiant</th>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm">Sabab</th>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm">Tarkibi</th>
+            <th className="px-6 py-4 font-bold text-red-600 text-sm text-right">Summa</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-gray-100">
+          {cancelledData.map((order) => {
+            let items = [];
+            try { items = JSON.parse(order.items_json); } catch (e) { }
+            return (
+              <tr key={order.id} className="hover:bg-red-50 transition-colors">
+                <td className="px-6 py-4 font-mono text-gray-500 text-sm">#{order.table_id}</td>
+                <td className="px-6 py-4 text-sm text-gray-600">
+                  <div className="font-bold text-gray-800">{new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+                  <div className="text-xs text-gray-400">{new Date(order.date).toLocaleDateString()}</div>
+                </td>
+                <td className="px-6 py-4 font-medium text-gray-800">{order.waiter_name}</td>
+                <td className="px-6 py-4 text-sm text-red-500 font-medium italic">"{order.reason}"</td>
+                <td className="px-6 py-4 text-sm text-gray-600 max-w-xs break-words">
+                  {items.map(i => `${i.product_name || i.name} x${i.quantity || i.qty}`).join(', ')}
+                </td>
+                <td className="px-6 py-4 text-right font-black text-gray-800">{order.total_amount?.toLocaleString()}</td>
+              </tr>
+            );
+          })}
+          {cancelledData.length === 0 && <tr><td colSpan="6" className="p-8 text-center text-gray-400">Bekor qilingan buyurtmalar yo'q</td></tr>}
         </tbody>
       </table>
     </div>
@@ -365,47 +417,50 @@ const Reports = () => {
         <div className="px-4 py-2">
           <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 mb-6">
             <p className="text-[10px] font-bold text-gray-400 mb-2 uppercase tracking-wider flex items-center gap-1">
-               <Calendar size={12} /> Sana Oralig'i
+              <Calendar size={12} /> Sana Oralig'i
             </p>
             <div className="space-y-2">
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={dateRange.startDate}
-                onChange={(e) => setDateRange({...dateRange, startDate: e.target.value})}
+                onChange={(e) => setDateRange({ ...dateRange, startDate: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
-              <input 
-                type="date" 
+              <input
+                type="date"
                 value={dateRange.endDate}
-                onChange={(e) => setDateRange({...dateRange, endDate: e.target.value})}
+                onChange={(e) => setDateRange({ ...dateRange, endDate: e.target.value })}
                 className="w-full p-2.5 rounded-lg border border-gray-200 text-sm font-bold text-gray-700 outline-none focus:ring-2 focus:ring-blue-500 bg-white"
               />
             </div>
             <button onClick={loadData} disabled={loading} className="w-full mt-3 bg-gray-900 text-white py-2.5 rounded-lg text-sm font-bold hover:bg-gray-800 flex items-center justify-center gap-2 active:scale-95 transition-transform">
-               {loading ? "Yuklanmoqda..." : <><Filter size={16} /> Yangilash</>}
+              {loading ? "Yuklanmoqda..." : <><Filter size={16} /> Yangilash</>}
             </button>
           </div>
 
           <div className="space-y-1">
             <button onClick={() => setActiveTab('dashboard')} className={`w-full text-left px-4 py-3.5 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'dashboard' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-               <LayoutDashboard size={20} /> Umumiy Ko'rsatkich
+              <LayoutDashboard size={20} /> Umumiy Ko'rsatkich
             </button>
             <button onClick={() => setActiveTab('staff')} className={`w-full text-left px-4 py-3.5 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'staff' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-               <Users size={20} /> Xodimlar Statistikasi
+              <Users size={20} /> Xodimlar Statistikasi
             </button>
             <button onClick={() => setActiveTab('products')} className={`w-full text-left px-4 py-3.5 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'products' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-               <UtensilsCrossed size={20} /> Menyu Tahlili
+              <UtensilsCrossed size={20} /> Menyu Tahlili
             </button>
             <button onClick={() => setActiveTab('history')} className={`w-full text-left px-4 py-3.5 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'history' ? 'bg-blue-50 text-blue-600 shadow-sm ring-1 ring-blue-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
-               <History size={20} /> Tranzaksiyalar
+              <History size={20} /> Tranzaksiyalar
+            </button>
+            <button onClick={() => setActiveTab('trash')} className={`w-full text-left px-4 py-3.5 rounded-xl font-bold text-sm flex items-center gap-3 transition-all ${activeTab === 'trash' ? 'bg-red-50 text-red-600 shadow-sm ring-1 ring-red-100' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'}`}>
+              <Trash2 size={20} /> Bekor Qilinganlar
             </button>
           </div>
         </div>
 
         <div className="mt-auto p-4 border-t border-gray-100">
-           <button onClick={exportToCSV} className="w-full border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300 flex items-center justify-center gap-2 transition-colors">
-              <Download size={18} /> Excelga Yuklash
-           </button>
+          <button onClick={exportToCSV} className="w-full border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300 flex items-center justify-center gap-2 transition-colors">
+            <Download size={18} /> Excelga Yuklash
+          </button>
         </div>
       </div>
 
@@ -413,37 +468,39 @@ const Reports = () => {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Header */}
         <div className="bg-white h-20 px-8 flex items-center justify-between border-b border-gray-200 shrink-0 z-10 shadow-sm">
-           <div>
-              <h1 className="text-xl font-black text-gray-800 uppercase tracking-tight">
-                 {activeTab === 'dashboard' && "Biznes Holati"}
-                 {activeTab === 'staff' && "Xodimlar Samaradorligi"}
-                 {activeTab === 'products' && "Menyu Reytingi"}
-                 {activeTab === 'history' && "Savdo Tarixi"}
-              </h1>
-              <p className="text-gray-400 text-xs font-bold mt-0.5 flex items-center gap-1">
-                 <Calendar size={12}/> {new Date(dateRange.startDate).toLocaleDateString()} — {new Date(dateRange.endDate).toLocaleDateString()}
-              </p>
-           </div>
-           
-           {/* Quick Stats Summary (Optional Header Info) */}
-           <div className="flex gap-6">
-              <div className="text-right">
-                 <p className="text-[10px] font-bold text-gray-400 uppercase">Jami Tushum</p>
-                 <p className="text-lg font-black text-blue-600">{stats.totalRevenue.toLocaleString()}</p>
-              </div>
-              <div className="text-right border-l border-gray-100 pl-6">
-                 <p className="text-[10px] font-bold text-gray-400 uppercase">Cheklar</p>
-                 <p className="text-lg font-black text-gray-800">{stats.totalOrders}</p>
-              </div>
-           </div>
+          <div>
+            <h1 className="text-xl font-black text-gray-800 uppercase tracking-tight">
+              {activeTab === 'dashboard' && "Biznes Holati"}
+              {activeTab === 'staff' && "Xodimlar Samaradorligi"}
+              {activeTab === 'products' && "Menyu Reytingi"}
+              {activeTab === 'history' && "Savdo Tarixi"}
+              {activeTab === 'trash' && "Bekor Qilinganlar Tarixi"}
+            </h1>
+            <p className="text-gray-400 text-xs font-bold mt-0.5 flex items-center gap-1">
+              <Calendar size={12} /> {new Date(dateRange.startDate).toLocaleDateString()} — {new Date(dateRange.endDate).toLocaleDateString()}
+            </p>
+          </div>
+
+          {/* Quick Stats Summary (Optional Header Info) */}
+          <div className="flex gap-6">
+            <div className="text-right">
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Jami Tushum</p>
+              <p className="text-lg font-black text-blue-600">{stats.totalRevenue.toLocaleString()}</p>
+            </div>
+            <div className="text-right border-l border-gray-100 pl-6">
+              <p className="text-[10px] font-bold text-gray-400 uppercase">Cheklar</p>
+              <p className="text-lg font-black text-gray-800">{stats.totalOrders}</p>
+            </div>
+          </div>
         </div>
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-8 pb-32">
-           {activeTab === 'dashboard' && renderDashboard()}
-           {activeTab === 'staff' && renderStaff()}
-           {activeTab === 'products' && renderProducts()}
-           {activeTab === 'history' && renderHistory()}
+          {activeTab === 'dashboard' && renderDashboard()}
+          {activeTab === 'staff' && renderStaff()}
+          {activeTab === 'products' && renderProducts()}
+          {activeTab === 'history' && renderHistory()}
+          {activeTab === 'trash' && renderCancelledOrders()}
         </div>
       </div>
     </div>
