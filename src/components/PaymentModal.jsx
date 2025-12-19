@@ -33,6 +33,8 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPay, selectedCustomer })
     }
   }, [isOpen, totalAmount, isSplitPayment]);
 
+
+
   const handlePayment = () => {
     setError('');
 
@@ -76,6 +78,26 @@ const PaymentModal = ({ isOpen, onClose, totalAmount, onPay, selectedCustomer })
       onPay(activeMethod, dueDate); // Pass single method and dueDate
     }
   };
+
+  // Hotkeys - Moved after handlePayment to avoid ReferenceError
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      } else if (e.key === 'Enter') {
+        // Agar active element button bo'lsa, u holda o'zining click hodisasi ishlaydi
+        if (document.activeElement.tagName === 'BUTTON') return;
+
+        e.preventDefault();
+        handlePayment();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, handlePayment, onClose]);
 
   const selectMethod = (id) => {
     setActiveMethod(id);

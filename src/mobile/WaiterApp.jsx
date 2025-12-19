@@ -3,7 +3,7 @@ import axios from 'axios';
 import {
   Users, Clock, ChevronLeft, ShoppingBag, Trash2, Plus, Minus,
   CheckCircle, X, LogOut, User, AlertTriangle, Hash, Lock,
-  LayoutGrid, UtensilsCrossed, ChefHat, Receipt
+  LayoutGrid, UtensilsCrossed, ChefHat, Receipt, Search, WifiOff, Printer
 } from 'lucide-react';
 
 import { useSocketData } from '../hooks/useSocketData';
@@ -27,6 +27,23 @@ const WaiterApp = () => {
   // Guest Modal logic
   const [showGuestModal, setShowGuestModal] = useState(false);
   const [guestCount, setGuestCount] = useState(2);
+
+  // Search Logic
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Offline Logic
+  const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // UI States
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
@@ -153,6 +170,14 @@ const WaiterApp = () => {
   };
 
   // UI COMPONENTS
+  const OfflineBanner = () => {
+    if (isOnline) return null;
+    return (
+      <div className="bg-red-500 text-white text-xs font-bold text-center py-1 sticky top-0 z-50 flex justify-center items-center gap-2">
+        <WifiOff size={14} /> Internet aloqasi yo'q!
+      </div>
+    );
+  };
   const GuestModal = () => {
     if (!showGuestModal) return null;
     return (
@@ -188,6 +213,7 @@ const WaiterApp = () => {
 
     return (
       <div className="min-h-screen bg-gray-50 pb-20 relative font-sans">
+        <OfflineBanner />
         <GuestModal />
 
         {toast && (
@@ -288,6 +314,7 @@ const WaiterApp = () => {
   // --- MENU & CART & ORDERS VIEW (Improved UI) ---
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col h-screen overflow-hidden relative font-sans">
+      <OfflineBanner />
       <GuestModal />
       <ConfirmModal isOpen={showConfirmOrder} onClose={() => setShowConfirmOrder(false)} onConfirm={sendOrder} title="Tasdiqlash" message={`Jami: ${cartTotal.toLocaleString()} so'm`} confirmText="Yuborish" isDanger={false} />
 
@@ -354,6 +381,7 @@ const WaiterApp = () => {
                     {tableOrders.reduce((acc, i) => acc + (i.price * i.quantity), 0).toLocaleString()}
                   </span>
                 </div>
+
               </div>
             )}
           </div>
@@ -385,15 +413,33 @@ const WaiterApp = () => {
           </div>
         ) : (
           <>
-            {/* Categories */}
             <div className="bg-white pb-2 z-10">
               <div className="flex overflow-x-auto px-4 py-2 gap-3 scrollbar-hide">
                 {categories.map(cat => (
-                  <button key={cat.id} onClick={() => setActiveCategory(cat.id)}
+                  <button key={cat.id} onClick={() => { setActiveCategory(cat.id); setSearchQuery(''); }}
                     className={`px-6 py-3 rounded-2xl text-sm font-bold whitespace-nowrap transition-all active:scale-95 ${activeCategory === cat.id ? 'bg-gray-900 text-white shadow-lg' : 'bg-gray-100 text-gray-600'}`}>
                     {cat.name}
                   </button>
                 ))}
+              </div>
+
+              {/* MENU SEARCH BAR */}
+              <div className="px-4 pb-2">
+                <div className="relative">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                  <input
+                    type="text"
+                    placeholder="Taom qidirish..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="w-full pl-11 pr-4 py-3 bg-gray-100 rounded-2xl font-medium focus:bg-white focus:ring-2 focus:ring-blue-500 outline-none text-gray-800 transition-all placeholder:text-gray-400"
+                  />
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} className="absolute right-4 top-1/2 -translate-y-1/2 p-1 bg-gray-200 rounded-full text-gray-500">
+                      <X size={14} />
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
@@ -401,33 +447,38 @@ const WaiterApp = () => {
             <div className="flex-1 overflow-y-auto p-4 pb-40">
               {loading ? <div className="text-center py-10 text-gray-400">Yuklanmoqda...</div> : (
                 <div className="grid grid-cols-1 gap-3">
-                  {products.filter(p => p.category_id === activeCategory).map(product => {
-                    const inCart = cart.find(c => c.id === product.id);
-                    return (
-                      <div key={product.id} onClick={() => addToCart(product)}
-                        className={`p-4 rounded-3xl flex justify-between items-center transition-all active:scale-95 border-2 
+                  {products
+                    .filter(p => {
+                      if (searchQuery) return p.active && p.name.toLowerCase().includes(searchQuery.toLowerCase());
+                      return p.category_id === activeCategory;
+                    })
+                    .map(product => {
+                      const inCart = cart.find(c => c.id === product.id);
+                      return (
+                        <div key={product.id} onClick={() => addToCart(product)}
+                          className={`p-4 rounded-3xl flex justify-between items-center transition-all active:scale-95 border-2 
                                         ${inCart ? 'bg-blue-50 border-blue-500 shadow-sm' : 'bg-white border-transparent shadow-sm'}`}>
-                        <div className="flex items-center gap-4">
-                          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${inCart ? 'bg-blue-200' : 'bg-gray-100'}`}>
-                            {product.image ? <img src={product.image} className="w-full h-full object-cover rounded-2xl" /> : '🍳'}
+                          <div className="flex items-center gap-4">
+                            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${inCart ? 'bg-blue-200' : 'bg-gray-100'}`}>
+                              {product.image ? <img src={product.image} className="w-full h-full object-cover rounded-2xl" /> : '🍳'}
+                            </div>
+                            <div>
+                              <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
+                              <p className="text-gray-500 font-medium">{product.price.toLocaleString()} so'm</p>
+                            </div>
                           </div>
-                          <div>
-                            <h3 className="font-bold text-gray-900 text-lg">{product.name}</h3>
-                            <p className="text-gray-500 font-medium">{product.price.toLocaleString()} so'm</p>
-                          </div>
+                          {inCart ? (
+                            <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-lg shadow-blue-200">
+                              {inCart.qty}
+                            </div>
+                          ) : (
+                            <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
+                              <Plus size={24} />
+                            </button>
+                          )}
                         </div>
-                        {inCart ? (
-                          <div className="bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center font-black text-lg shadow-lg shadow-blue-200">
-                            {inCart.qty}
-                          </div>
-                        ) : (
-                          <button className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                            <Plus size={24} />
-                          </button>
-                        )}
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
                 </div>
               )}
             </div>
@@ -435,7 +486,6 @@ const WaiterApp = () => {
         )
       }
 
-      {/* Bottom Action Bar */}
       {
         cart.length > 0 && (
           <div className="fixed bottom-0 left-0 right-0 bg-white p-5 rounded-t-[2rem] shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.1)] z-30">

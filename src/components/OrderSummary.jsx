@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CreditCard, Users, User, Wallet, X, Printer, Hash, Trash2 } from 'lucide-react';
+import { CreditCard, Users, User, Wallet, X, Printer, Hash, Trash2, Search, PlusCircle } from 'lucide-react';
 import PaymentModal from './PaymentModal';
 import CustomerModal from './CustomerModal';
 import ConfirmModal from './ConfirmModal';
@@ -15,9 +15,15 @@ const OrderSummary = ({ table, onDeselect }) => {
   const [loading, setLoading] = useState(false);
   const [printingCheck, setPrintingCheck] = useState(false);
 
+  // Search & Products
+  const [allProducts, setAllProducts] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const searchInputRef = React.useRef(null);
 
 
-  const { settings } = useGlobal(); // Use global settings
+
+  const { settings, showToast } = useGlobal(); // Use global settings
 
   useEffect(() => {
     setSelectedCustomer(null);
@@ -40,6 +46,80 @@ const OrderSummary = ({ table, onDeselect }) => {
     } finally {
       setLoading(false);
     }
+  }
+
+
+  useEffect(() => {
+    loadProducts();
+  }, []);
+
+  const loadProducts = async () => {
+    if (!window.electron) return;
+    try {
+      const products = await window.electron.ipcRenderer.invoke('get-products');
+      setAllProducts(products || []);
+    } catch (err) {
+      console.error("Error loading products:", err);
+    }
+  };
+
+  // Search Logic
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      return;
+    }
+    const lower = searchQuery.toLowerCase();
+    const filtered = allProducts.filter(p =>
+      p.active && (p.name.toLowerCase().includes(lower) || (p.code && p.code.toLowerCase().includes(lower)))
+    );
+    setSearchResults(filtered);
+  }, [searchQuery, allProducts]);
+
+  // Hotkeys
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // F4 - Focus Search
+      if (e.key === 'F4') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+
+      // Space - Open Payment (only if not typing in input)
+      if (e.code === 'Space' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        if (table && orderItems.length > 0) {
+          setIsPaymentModalOpen(true);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [table, orderItems]);
+
+  const handleAddProduct = async (product) => {
+    if (!table || !window.electron) return;
+    try {
+      // Add item directly (quantity 1)
+      await window.electron.ipcRenderer.invoke('add-order-item', {
+        table_id: table.id,
+        product_id: product.id,
+        quantity: 1,
+        price: product.price
+      });
+      // Clear search
+      setSearchQuery('');
+      setSearchResults([]);
+      // Reload items
+      setSearchResults([]);
+      // Reload items
+      loadOrderItems(table.id);
+      // Optional: Sound effect
+    } catch (err) {
+      console.error(err);
+      showToast('error', err.message);
+    }
   };
 
   const handlePrintCheck = async () => {
@@ -57,7 +137,7 @@ const OrderSummary = ({ table, onDeselect }) => {
       }
     } catch (error) {
       console.error('HISOB chiqarishda xato:', error);
-      alert(`Xato: ${error.message}`);
+      showToast('error', `Xato: ${error.message}`);
     } finally {
       setPrintingCheck(false);
     }
@@ -73,7 +153,7 @@ const OrderSummary = ({ table, onDeselect }) => {
       }
     } catch (error) {
       console.error("Cancel error:", error);
-      alert("Xatolik yuz berdi: " + error.message);
+      showToast('error', "Xatolik yuz berdi: " + error.message);
     }
   };
 
@@ -216,6 +296,51 @@ const OrderSummary = ({ table, onDeselect }) => {
               {table.status === 'occupied' ? 'Band' : 'To\'lov'}
             </span>
           </div>
+        </div>
+
+        {/* SEARCH BAR */}
+        <div className="px-4 py-2 bg-white border-b border-gray-100 relative z-20">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder="Mahsulot qidirish / Shtrixkod (F4)"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-200 transition-all font-medium"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              >
+                <X size={16} />
+              </button>
+            )}
+          </div>
+
+          {/* Search Results Dropdown */}
+          {searchResults.length > 0 && (
+            <div className="absolute top-full left-4 right-4 bg-white shadow-xl rounded-b-xl border border-gray-100 max-h-60 overflow-y-auto mt-1">
+              {searchResults.map(prod => (
+                <div
+                  key={prod.id}
+                  onClick={() => handleAddProduct(prod)}
+                  className="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-50 flex justify-between items-center group"
+                >
+                  <div>
+                    <p className="font-bold text-gray-800 text-sm">{prod.name}</p>
+                    <p className="text-xs text-gray-400">{prod.code || 'Kod yo\'q'}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold text-blue-600 text-sm">{prod.price.toLocaleString()}</span>
+                    <PlusCircle size={18} className="text-gray-300 group-hover:text-blue-500" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* CUSTOMER */}

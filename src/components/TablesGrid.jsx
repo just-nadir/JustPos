@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
-  Users, Clock, Receipt, Hash, User
+  Users, Clock, Receipt, Hash, User, Search, Lock, Unlock
 } from 'lucide-react';
 import { useIpcListener } from '../hooks/useIpcListener';
 import { useGlobal } from '../context/GlobalContext';
@@ -11,6 +11,7 @@ const TablesGrid = ({ onSelectTable }) => {
   const [halls, setHalls] = useState([]);
   const [activeHallId, setActiveHallId] = useState('all');
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState(''); // Search state
 
   // Settings ni global contextdan olamiz
   const { settings } = useGlobal(); // <-- GlobalContext dan settings ni oldik
@@ -50,9 +51,18 @@ const TablesGrid = ({ onSelectTable }) => {
 
   // Filterlash logikasi
   const filteredTables = tables.filter(table => {
-    const isActiveStatus = table.status !== 'free';
+    // Search filter
+    const searchLower = searchQuery.toLowerCase();
+    const matchesSearch = table.name.toLowerCase().includes(searchLower) ||
+      (table.current_check_number && table.current_check_number.toString().includes(searchLower));
+
+    // Hall filter
     const isHallMatch = activeHallId === 'all' || table.hall_id === activeHallId;
-    return isActiveStatus && isHallMatch;
+
+    // Status filter (Only show active tables)
+    const isActiveStatus = table.status !== 'free';
+
+    return isHallMatch && matchesSearch && isActiveStatus;
   });
 
   // Dizayn yordamchilari
@@ -60,6 +70,8 @@ const TablesGrid = ({ onSelectTable }) => {
     switch (status) {
       case 'occupied': return 'bg-white border-l-4 border-blue-500';
       case 'payment': return 'bg-yellow-50 border-l-4 border-yellow-500';
+      case 'reserved': return 'bg-purple-50 border-l-4 border-purple-500'; // Reserved style
+      case 'free': return 'bg-white border text-gray-400 opacity-80'; // Free style
       default: return 'bg-white';
     }
   };
@@ -68,6 +80,8 @@ const TablesGrid = ({ onSelectTable }) => {
     switch (status) {
       case 'occupied': return <span className="bg-blue-100 text-blue-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">BAND</span>;
       case 'payment': return <span className="bg-yellow-100 text-yellow-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">TO'LOV</span>;
+      case 'reserved': return <span className="bg-purple-100 text-purple-600 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">BAND QILINGAN</span>;
+      case 'free': return <span className="bg-gray-100 text-gray-500 px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide">BO'SH</span>;
       default: return null;
     }
   };
@@ -79,7 +93,22 @@ const TablesGrid = ({ onSelectTable }) => {
       {/* HEADER */}
       <div className="p-6 pb-2 bg-white shadow-sm z-10 shrink-0">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">Kassa</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-2xl font-bold text-gray-800">Kassa</h1>
+
+            {/* SEARCH INPUT */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input
+                type="text"
+                placeholder="Stol qidirish..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-2 bg-gray-100 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all font-medium"
+              />
+            </div>
+          </div>
+
           <div className="text-right">
             <p className="font-bold text-lg text-gray-800">
               {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -112,7 +141,10 @@ const TablesGrid = ({ onSelectTable }) => {
                 {/* Tepasi: Nom va Status */}
                 <div className="flex justify-between items-start">
                   <h3 className="font-bold text-lg text-gray-800 leading-tight">{table.name}</h3>
-                  {getStatusBadge(table.status)}
+                  <div className="flex items-center gap-2">
+                    {getStatusBadge(table.status)}
+                    {/* Reservation Toggle Button Removed */}
+                  </div>
                 </div>
 
                 {/* Info qatori: Chek raqami va Ofitsiant */}
