@@ -83,6 +83,7 @@ function registerIpcHandlers(ipcMain) {
 
     // Hisobotlar uchun
     ipcMain.handle('get-sales', (e, { startDate, endDate }) => orderController.getSales(startDate, endDate));
+    ipcMain.handle('get-sales-trend', () => orderController.getSalesTrend()); // YANGI
     ipcMain.handle('get-cancelled-orders', (e, { startDate, endDate }) => orderController.getCancelledOrders(startDate, endDate));
 
     // ==========================================
@@ -133,6 +134,22 @@ function registerIpcHandlers(ipcMain) {
     ipcMain.handle('license-get-info', () => licenseManager.checkLicense());
     ipcMain.handle('license-create-request', () => licenseManager.createRequestFile());
     ipcMain.handle('license-get-hwid', () => licenseManager.getHwid());
+
+    // ==========================================
+    // 9. TELEGRAM BOT (Yangi Modul)
+    // ==========================================
+    const telegramController = require('./controllers/telegramController.cjs');
+
+    ipcMain.handle('telegram-test', () => telegramController.sendTestMessage());
+    ipcMain.handle('telegram-send-report', (e, date) => telegramController.sendDailyReport(date));
+
+    // ==========================================
+    // 10. SHIFT MANAGEMENT (Smena) - YANGI
+    // ==========================================
+    const shiftController = require('./controllers/shiftController.cjs');
+    ipcMain.handle('shift-open', (e, { cashierName, startCash }) => shiftController.openShift(cashierName, startCash));
+    ipcMain.handle('shift-close', (e, endCash) => shiftController.closeShift(endCash));
+    ipcMain.handle('shift-status', () => shiftController.getShiftStatus());
 }
 
 module.exports = registerIpcHandlers;

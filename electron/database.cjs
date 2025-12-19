@@ -215,16 +215,28 @@ function initDB() {
     `).run();
 
     // 10. Litsenziya (YANGI) - REMOVED
-    // db.prepare(`
-    //     CREATE TABLE IF NOT EXISTS license_data (
-    //         id INTEGER PRIMARY KEY AUTOINCREMENT,
-    //         key TEXT,
-    //         type TEXT, -- 'lifetime' or 'monthly'
-    //         expiry_date TEXT,
-    //         last_login TEXT,
-    //         is_active INTEGER DEFAULT 1
-    //     )
-    // `).run();
+    // ...
+
+    // 11. SHIFTS (Smena) - YANGI
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS shifts (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            start_time TEXT NOT NULL,
+            end_time TEXT,
+            start_cash REAL DEFAULT 0,
+            end_cash REAL DEFAULT 0,
+            declared_cash REAL DEFAULT 0, -- Haqiqiy sanalgan naqd
+            declared_card REAL DEFAULT 0, -- Haqiqiy terminal tushumi
+            difference_cash REAL DEFAULT 0, -- Tafovut
+            difference_card REAL DEFAULT 0, -- Tafovut
+            status TEXT DEFAULT 'open', -- 'open' | 'closed'
+            cashier_name TEXT,
+            total_sales REAL DEFAULT 0,
+            total_cash REAL DEFAULT 0,
+            total_card REAL DEFAULT 0,
+            total_transfer REAL DEFAULT 0
+        )
+    `).run();
 
     // --- INDEKSLAR ---
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_tables_status ON tables(status)`).run();
@@ -298,6 +310,23 @@ function initDB() {
     if (!customerCols.some(c => c.name === 'notes')) {
       db.prepare("ALTER TABLE customers ADD COLUMN notes TEXT").run();
       console.log("✅ 'notes' ustuni customers jadvaliga qo'shildi.");
+    }
+
+    // 4. Sales jadvali uchun (SHIFT MIGRATSIYA)
+    const salesCols = db.prepare("PRAGMA table_info(sales)").all();
+    if (!salesCols.some(c => c.name === 'shift_id')) {
+      db.prepare("ALTER TABLE sales ADD COLUMN shift_id INTEGER DEFAULT 0").run();
+      console.log("✅ 'shift_id' ustuni sales jadvaliga qo'shildi.");
+    }
+
+    // 5. Shifts jadvali uchun (YANGI MIGRATSIYA)
+    const shiftCols = db.prepare("PRAGMA table_info(shifts)").all();
+    if (!shiftCols.some(c => c.name === 'declared_card')) {
+      db.prepare("ALTER TABLE shifts ADD COLUMN declared_card REAL DEFAULT 0").run();
+      db.prepare("ALTER TABLE shifts ADD COLUMN declared_cash REAL DEFAULT 0").run();
+      db.prepare("ALTER TABLE shifts ADD COLUMN difference_cash REAL DEFAULT 0").run();
+      db.prepare("ALTER TABLE shifts ADD COLUMN difference_card REAL DEFAULT 0").run();
+      console.log("✅ 'shifts' jadvaliga yangi ustunlar qo'shildi.");
     }
 
     // --- SEEDING: Default Admin yaratish ---

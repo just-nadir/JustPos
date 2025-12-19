@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, Printer, Database, Store, Receipt, Percent, RefreshCw, ChefHat, Plus, Trash2, Users, Shield, Key, Coins, CheckCircle, PcCase, MessageSquare } from 'lucide-react';
+import { Save, Printer, Database, Store, Receipt, Percent, RefreshCw, ChefHat, Plus, Trash2, Users, Shield, Key, Coins, CheckCircle, PcCase, MessageSquare, Send } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
 
 const Settings = () => {
@@ -20,8 +20,10 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     restaurantName: "", address: "", phone: "", wifiPassword: "",
     serviceChargeType: "percent", serviceChargeValue: 0, receiptFooter: "",
+    serviceChargeType: "percent", serviceChargeValue: 0, receiptFooter: "",
     printerReceiptIP: "",
-    eskiz_email: "", eskiz_password: "", eskiz_nickname: "4546" // YANGI
+    eskiz_email: "", eskiz_password: "", eskiz_nickname: "4546",
+    telegram_bot_token: "", telegram_chat_id: "", telegram_auto_send: "false" // YANGI
   });
 
   useEffect(() => {
@@ -170,6 +172,7 @@ const Settings = () => {
           <button onClick={() => setActiveTab('kitchens')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'kitchens' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><ChefHat size={20} /> Oshxonalar & Printer</button>
           <button onClick={() => setActiveTab('printers')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'printers' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Printer size={20} /> Kassa Printeri</button>
           <button onClick={() => setActiveTab('sms')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'sms' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><MessageSquare size={20} /> SMS Sozlamalari</button>
+          <button onClick={() => setActiveTab('telegram')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'telegram' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Send size={20} /> Telegram Bot</button>
           <button onClick={() => setActiveTab('license')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'license' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Key size={20} /> Litsenziya</button>
 
           <button onClick={() => setActiveTab('database')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'database' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Database size={20} /> Baza va Tizim</button>
@@ -379,6 +382,56 @@ const Settings = () => {
         )}
 
 
+
+        {/* --- TELEGRAM SETTINGS (YANGI) --- */}
+        {activeTab === 'telegram' && (
+          <div className="max-w-2xl space-y-6">
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+              <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2"><Send size={20} className="text-blue-500" /> Telegram Bot Sozlamalari</h3>
+              <p className="text-sm text-gray-400 mb-6">BotFather orqali yaratilgan bot ma'lumotlarini kiriting.</p>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-500 mb-1">Bot Token</label>
+                  <input type="text" name="telegram_bot_token" value={settings.telegram_bot_token || ''} onChange={handleChange} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-blue-500 font-mono" placeholder="123456789:ABCDefGHI..." />
+                </div>
+                <div>
+                  <label className="block text-sm font-bold text-gray-500 mb-1">Chat ID</label>
+                  <div className="flex gap-2">
+                    <input type="text" name="telegram_chat_id" value={settings.telegram_chat_id || ''} onChange={handleChange} className="w-full p-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:border-blue-500 font-mono" placeholder="123456789" />
+                    <button
+                      onClick={async () => {
+                        try {
+                          await window.electron.ipcRenderer.invoke('telegram-test');
+                          showNotify('success', "Xabar yuborildi!");
+                        } catch (e) {
+                          showNotify('error', e.message);
+                        }
+                      }}
+                      className="whitespace-nowrap px-4 bg-green-500 text-white rounded-xl font-bold hover:bg-green-600 transition-colors"
+                    >
+                      Test
+                    </button>
+                  </div>
+                  <p className="text-xs text-gray-400 mt-2">Botni guruhga qo'shing yoki unga /start bosing.</p>
+                </div>
+
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-gray-800">Avtomatik hisobot</p>
+                    <p className="text-xs text-gray-400">Har kecha soat 23:55 da hisobot yuborish</p>
+                  </div>
+                  <button
+                    onClick={() => setSettings(p => ({ ...p, telegram_auto_send: p.telegram_auto_send === 'true' ? 'false' : 'true' }))}
+                    className={`w-14 h-8 rounded-full p-1 transition-colors ${settings.telegram_auto_send === 'true' ? 'bg-blue-600' : 'bg-gray-200'}`}
+                  >
+                    <div className={`w-6 h-6 bg-white rounded-full shadow-sm transition-transform ${settings.telegram_auto_send === 'true' ? 'translate-x-6' : ''}`} />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* --- LICENSE (FILE BASED) --- */}
         {activeTab === 'license' && (

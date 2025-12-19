@@ -1,9 +1,9 @@
 {
-  "name": "justpos",
+  "name": "nadpos",
   "private": true,
   "version": "1.1.0",
   "main": "electron/main.cjs",
-  "description": "JustPos Restoran POS tizimi",
+  "description": "Nadpos Restoran POS tizimi",
   "author": "Ares Boston Tech LLC",
   "type": "module",
   "scripts": {

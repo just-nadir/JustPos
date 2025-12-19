@@ -6,7 +6,9 @@ import Sidebar from './Sidebar';
 import TablesGrid from './TablesGrid';
 import OrderSummary from './OrderSummary';
 import PinLogin from './PinLogin';
-import LicenseLock from './LicenseLock'; // YANGI
+
+import LicenseLock from './LicenseLock';
+import ShiftModal from './ShiftModal'; // YANGI
 
 // --- OPTIMIZATSIYA: Dangasa Yuklash (Lazy Loading) ---
 const MenuManagement = lazy(() => import('./MenuManagement'));
@@ -25,9 +27,10 @@ const PageLoader = () => (
 );
 
 const DesktopLayout = () => {
-  const { user, logout, loading, toast, showToast, license, checkLicense } = useGlobal(); // license, checkLicense qo'shildi
+  const { user, logout, loading, toast, showToast, license, checkLicense, shift, checkShift } = useGlobal(); // shift, checkShift qo'shildi
   const [activePage, setActivePage] = useState('pos');
   const [selectedTable, setSelectedTable] = useState(null);
+  const [showShiftModal, setShowShiftModal] = useState(false); // Smena yopish modali uchun
 
   // Printer xatolarini global eshitish
   useIpcListener('db-change', (event, data) => {
@@ -61,6 +64,28 @@ const DesktopLayout = () => {
     setSelectedTable(null);
     setActivePage('pos');
   };
+
+  // YANGI: Smena yopiq bo'lsa va user loginda bo'lsa -> ShiftModal (Open)
+  // shift null bo'lsa ham (startda) bloklash kerak
+  if (user && (!shift || shift.status === 'closed')) {
+    return (
+      <>
+        <ShiftModal mode="open" onClose={() => { }} />
+        {/* Orqa fon uchun xira layout */}
+        <div className="flex h-screen bg-gray-100 overflow-hidden font-sans blur-sm pointer-events-none">
+          <Sidebar activePage={activePage} onNavigate={() => { }} onLogout={handleLogout} user={user} />
+          <div className="flex-1 flex items-center justify-center p-10">
+            <h1 className="text-4xl font-black text-gray-300">SMENA OCHILMAGAN</h1>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // YANGI: Smenani yopish modali
+  const renderShiftModal = () => (
+    showShiftModal && <ShiftModal mode="close" onClose={() => setShowShiftModal(false)} />
+  );
 
   const renderContent = () => {
     // XAVFSIZLIK: Kassir cheklovi
@@ -119,7 +144,10 @@ const DesktopLayout = () => {
         onNavigate={setActivePage}
         onLogout={handleLogout}
         user={user}
+        onCloseShift={() => setShowShiftModal(true)} // YANGI
       />
+
+      {renderShiftModal()}
 
       {/* Layout o'zgarishi: POS bo'lsa grid, boshqa bo'lsa to'liq ekran */}
       {activePage === 'pos' ? renderContent() : <div className="flex-1 flex overflow-hidden">{renderContent()}</div>}

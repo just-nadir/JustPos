@@ -6,7 +6,7 @@ import {
 import {
   LayoutDashboard, Users, UtensilsCrossed, History, Calendar,
   Download, Filter, TrendingUp, DollarSign, CreditCard,
-  ShoppingBag, Search, ChevronRight, ArrowUpRight, ArrowDownRight, Trash2
+  ShoppingBag, Search, ChevronRight, ArrowUpRight, ArrowDownRight, Trash2, Send
 } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
 
@@ -22,9 +22,10 @@ const getTodayDate = () => {
 };
 
 const Reports = () => {
-  const { settings } = useGlobal(); // <-- Global settings
+  const { settings, showToast } = useGlobal(); // <-- Global settings & Toast
   const [activeTab, setActiveTab] = useState('dashboard'); // dashboard, staff, products, history, trash
   const [salesData, setSalesData] = useState([]);
+  const [trendData, setTrendData] = useState([]); // YANGI
   const [cancelledData, setCancelledData] = useState([]);
   const [loading, setLoading] = useState(false);
 
@@ -49,13 +50,15 @@ const Reports = () => {
         endDate: `${dateRange.endDate}T23:59:59.999Z`
       };
 
-      const [sData, cData] = await Promise.all([
+      const [sData, cData, tData] = await Promise.all([
         ipcRenderer.invoke('get-sales', range),
-        ipcRenderer.invoke('get-cancelled-orders', range)
+        ipcRenderer.invoke('get-cancelled-orders', range),
+        ipcRenderer.invoke('get-sales-trend') // 30 kunlik
       ]);
 
       setSalesData(sData || []);
       setCancelledData(cData || []);
+      setTrendData(tData || []);
     } catch (err) {
       console.error(err);
     } finally {
@@ -64,6 +67,18 @@ const Reports = () => {
   };
 
   // --- EXPORT TO CSV ---
+  const handleTelegramSend = async () => {
+    try {
+      if (!window.electron) return;
+      // Bugungi sana bo'lsa "Bugungi hisobot", boshqa sana bo'lsa o'sha kun
+      const dateToSend = dateRange.endDate;
+      await window.electron.ipcRenderer.invoke('telegram-send-report', dateToSend);
+      showToast('success', "Hisobot Telegramga yuborildi!");
+    } catch (error) {
+      showToast('error', error.message);
+    }
+  };
+
   const exportToCSV = () => {
     if (salesData.length === 0) return;
 
@@ -250,6 +265,24 @@ const Reports = () => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Sales Trend (30 Days) */}
+      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-80 mt-6">
+        <h3 className="font-bold text-gray-700 mb-6 flex items-center gap-2">
+          <Calendar size={18} /> Oxirgi 30 kunlik dinamika
+        </h3>
+        <div className="flex-1 w-full min-h-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={trendData}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+              <XAxis dataKey="day" tickFormatter={(d) => d.slice(5)} tick={{ fontSize: 12 }} />
+              <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 12 }} />
+              <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} labelFormatter={(label) => label} />
+              <Bar dataKey="total" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
       </div>
     </div>
@@ -460,6 +493,10 @@ const Reports = () => {
         <div className="mt-auto p-4 border-t border-gray-100">
           <button onClick={exportToCSV} className="w-full border-2 border-gray-200 text-gray-600 py-3 rounded-xl font-bold text-sm hover:bg-gray-50 hover:text-gray-800 hover:border-gray-300 flex items-center justify-center gap-2 transition-colors">
             <Download size={18} /> Excelga Yuklash
+          </button>
+
+          <button onClick={handleTelegramSend} className="w-full mt-3 bg-blue-500 text-white py-3 rounded-xl font-bold text-sm hover:bg-blue-600 shadow-lg shadow-blue-200 flex items-center justify-center gap-2 transition-colors active:scale-95">
+            <Send size={18} /> Telegramga Yuborish
           </button>
         </div>
       </div>

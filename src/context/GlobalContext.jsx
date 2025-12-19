@@ -10,6 +10,7 @@ export const GlobalProvider = ({ children }) => {
 
   // YANGI: Toast (Xabarnoma) uchun state
   const [toast, setToast] = useState(null);
+  const [shift, setShift] = useState(null); // YANGI: Smena holati
 
   // YANGI: License Status
   const [license, setLicense] = useState({
@@ -48,8 +49,14 @@ export const GlobalProvider = ({ children }) => {
           const loadedSettings = await window.electron.ipcRenderer.invoke('get-settings');
           setSettings(loadedSettings || {});
 
+          setSettings(loadedSettings || {});
+
           // Dastur boshlanishida litsenziyani tekshirish
           await checkLicense();
+
+          // YANGI: Smena holatini tekshirish
+          const shiftStatus = await window.electron.ipcRenderer.invoke('shift-status');
+          setShift(shiftStatus);
 
         } catch (err) {
           console.error("Global Context Init Error:", err);
@@ -99,7 +106,15 @@ export const GlobalProvider = ({ children }) => {
     toast,      // Export qilamiz
     showToast,   // Export qilamiz
     license,    // Export
-    checkLicense // Export
+    checkLicense, // Export
+    shift,        // Export
+    setShift,     // Export
+    checkShift: async () => {
+      if (window.electron) {
+        const s = await window.electron.ipcRenderer.invoke('shift-status');
+        setShift(s);
+      }
+    }
   };
 
   return (

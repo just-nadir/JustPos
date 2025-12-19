@@ -1,6 +1,8 @@
 const { db, notify } = require('../database.cjs');
 const printerService = require('../services/printerService.cjs');
 const log = require('electron-log');
+const shiftController = require('../controllers/shiftController.cjs'); // YANGI
+
 
 function getOrCreateCheckNumber(tableId) {
     const table = db.prepare('SELECT current_check_number FROM tables WHERE id = ?').get(tableId);
@@ -30,6 +32,10 @@ module.exports = {
 
     addItem: (data) => {
         try {
+            // Smena ochiqligini tekshirish
+            const activeShift = shiftController.getShiftStatus();
+            if (!activeShift) throw new Error("Smena ochilmagan! Iltimos, avval smenani oching.");
+
             let checkNumber = 0;
             const addItemTransaction = db.transaction((item) => {
                 const { tableId, productName, price, quantity, destination } = item;
@@ -224,6 +230,9 @@ module.exports = {
             let guestCount = 0;
 
             const performCheckout = db.transaction(() => {
+                const activeShift = shiftController.getShiftStatus(); // YANGI: Smena ID ni olish
+                if (!activeShift) throw new Error("Smena ochilmagan!");
+
                 const table = db.prepare('SELECT current_check_number, waiter_name, guests FROM tables WHERE id = ?').get(tableId);
                 checkNumber = table ? table.current_check_number : 0;
                 waiterName = table ? table.waiter_name : "Kassir";
@@ -241,7 +250,7 @@ module.exports = {
                     itemsJson = JSON.stringify(items);
                 }
 
-                db.prepare(`INSERT INTO sales (date, total_amount, subtotal, discount, payment_method, customer_id, items_json, check_number, waiter_name, guest_count) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(date, total, subtotal, discount, paymentMethod, customerId, itemsJson, checkNumber, waiterName, guestCount);
+                db.prepare(`INSERT INTO sales (date, total_amount, subtotal, discount, payment_method, customer_id, items_json, check_number, waiter_name, guest_count, shift_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`).run(date, total, subtotal, discount, paymentMethod, customerId, itemsJson, checkNumber, waiterName, guestCount, activeShift.id);
 
                 // Handle debt for split payments
                 if (paymentMethod === 'split' && paymentDetails && customerId) {
@@ -392,6 +401,26 @@ module.exports = {
         } catch (err) {
             log.error("getCancelledOrders xatosi:", err);
             throw err;
+        }
+    },
+
+    getSalesTrend: () => {
+        try {
+            // Oxirgi 30 kunlik statistika
+            const query = `
+                SELECT 
+                    strftime('%Y-%m-%d', date) as day, 
+                    SUM(total_amount) as total 
+                FROM sales 
+                WHERE date(date) >= date('now', '-30 days') 
+                GROUP BY strftime('%Y-%m-%d', date) 
+                ORDER BY day ASC
+            `;
+            const results = db.prepare(query).all();
+            return results;
+        } catch (err) {
+            log.error("getSalesTrend xatosi:", err);
+            return [];
         }
     }
 };

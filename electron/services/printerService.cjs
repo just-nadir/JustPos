@@ -444,5 +444,105 @@ module.exports = {
             log.error("❌ printKitchenTicket umumiy xatosi:", err);
             throw err;
         }
+    },
+
+    // 4. Z-Report (Smena yopilganda) - YANGI
+    printZReport: async (shiftReport) => {
+        const settings = getSettings();
+        const printerName = settings.printerReceiptIP;
+        const restaurantName = settings.restaurantName || "RESTORAN";
+
+        const content = `
+            <div class="text-center">
+                <div class="header-title uppercase">${restaurantName}</div>
+                <div class="header-info">Z-REPORT (SMENA YOPISH)</div>
+            </div>
+            
+            <div class="double-line"></div>
+            
+            <div class="flex">
+                <span>Smena ID:</span>
+                <span class="bold"># ${shiftReport.shiftId}</span>
+            </div>
+             <div class="flex">
+                <span>Kassir:</span>
+                <span class="bold">${shiftReport.cashierName}</span>
+            </div>
+            <div class="flex">
+                <span>Boshlandi:</span>
+                <span>${new Date(shiftReport.startTime).toLocaleString()}</span>
+            </div>
+            <div class="flex">
+                <span>Tugadi:</span>
+                <span>${new Date(shiftReport.endTime).toLocaleString()}</span>
+            </div>
+
+            <div class="line"></div>
+            <div class="text-center bold uppercase">MOLIYAVIY HISOBOT</div>
+            <div class="line"></div>
+
+            <div class="bold mb-1">NAQD PUL (CASH):</div>
+            <div class="flex">
+                <span>Tizim bo'yicha:</span>
+                <span>${shiftReport.systemCash?.toLocaleString()}</span>
+            </div>
+             <div class="flex">
+                <span>Kassa Boshida:</span>
+                <span>${shiftReport.startCash?.toLocaleString()}</span>
+            </div>
+            <div class="flex" style="border-top: 1px dashed #ccc;">
+                <span>Kutilayotgan:</span>
+                <span>${shiftReport.expectedCash?.toLocaleString()}</span>
+            </div>
+             <div class="flex bold" style="margin-top: 2px;">
+                <span>HAQIQIY:</span>
+                <span>${shiftReport.actualCash?.toLocaleString()}</span>
+            </div>
+            <div class="flex bold">
+                <span>FARQ:</span>
+                <span style="color: ${shiftReport.diffCash < 0 ? 'red' : 'black'}">
+                    ${shiftReport.diffCash > 0 ? '+' : ''}${shiftReport.diffCash?.toLocaleString()}
+                </span>
+            </div>
+
+            <div class="line"></div>
+
+            <div class="bold mb-1">TERMINAL (CARD):</div>
+            <div class="flex">
+                <span>Tizim bo'yicha:</span>
+                <span>${shiftReport.systemCard?.toLocaleString()}</span>
+            </div>
+             <div class="flex bold">
+                <span>HAQIQIY:</span>
+                <span>${shiftReport.actualCard?.toLocaleString()}</span>
+            </div>
+            <div class="flex bold">
+                <span>FARQ:</span>
+                 <span style="color: ${shiftReport.diffCard < 0 ? 'red' : 'black'}">
+                    ${shiftReport.diffCard > 0 ? '+' : ''}${shiftReport.diffCard?.toLocaleString()}
+                </span>
+            </div>
+
+            <div class="line"></div>
+
+             <div class="flex">
+                <span>O'tkazma:</span>
+                <span>${shiftReport.systemTransfer?.toLocaleString()}</span>
+            </div>
+
+            <div class="double-line"></div>
+
+            <div class="flex total-row">
+                <span>JAMI SAVDO:</span>
+                <span>${shiftReport.totalSales?.toLocaleString()} so'm</span>
+            </div>
+
+            <div class="text-center footer-msg">
+                ${new Date().toLocaleString()}
+            </div>
+        `;
+
+        const fullHtml = createHtmlTemplate(content);
+        await printHtml(fullHtml, printerName);
     }
 };

@@ -19,6 +19,12 @@ const initScheduler = () => {
         await runDatabaseBackup();
     });
 
+    // YANGI: Har kuni 23:55 da Telegram hisobot
+    cron.schedule('55 23 * * *', async () => {
+        log.info("Scheduler: Kunlik hisobot vaqti keldi");
+        await runDailyTelegramReport();
+    });
+
     // Test uchun: Har daqiqada ishga tushadi (developmentda yoqish mumkin)
     // cron.schedule('* * * * *', async () => {
     //     log.info("Scheduler: Test - har daqiqada");
@@ -150,6 +156,26 @@ const runDatabaseBackup = async () => {
         }
     } catch (error) {
         log.error("Scheduler: Backup xatosi:", error.message);
+    }
+};
+
+/**
+ * Telegram Kunlik Hisobot (Auto)
+ */
+const runDailyTelegramReport = async () => {
+    try {
+        const { db } = require('../database.cjs');
+        const telegramController = require('../controllers/telegramController.cjs');
+
+        // Sozlamani tekshirish
+        const autoSend = db.prepare("SELECT value FROM settings WHERE key = 'telegram_auto_send'").get();
+        if (!autoSend || autoSend.value !== 'true') return;
+
+        log.info("Scheduler: Telegram hisobot yuborilmoqda...");
+        await telegramController.sendDailyReport();
+
+    } catch (error) {
+        log.error("Scheduler: Telegram report error:", error.message);
     }
 };
 
