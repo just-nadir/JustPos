@@ -15,6 +15,7 @@
     "electron:dev": "concurrently -k \"cross-env BROWSER=none npm run dev\" \"npm run electron\"",
     "postinstall": "electron-builder install-app-deps",
     "license-gen": "electron admin/gui/main.cjs",
+    "license-manager": "cd admin-tool && npm run electron:dev",
     "dist": "npm run build && electron-builder",
     "test": "jest",
     "test:watch": "jest --watch",
