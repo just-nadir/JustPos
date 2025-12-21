@@ -1,9 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Save, Printer, Database, Store, Receipt, Percent, RefreshCw, ChefHat, Plus, Trash2, Users, Shield, Key, Coins, CheckCircle, PcCase, MessageSquare, Send } from 'lucide-react';
 import ConfirmModal from './ConfirmModal';
+import { formatDate } from '../utils/dateUtils';
+import { APP_INFO } from '../config/appConfig';
 
 const Settings = () => {
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = useState('general'); // Tabs: general, network, kitchen, users, printers, sms, license, about);
   const [loading, setLoading] = useState(false);
   const [kitchens, setKitchens] = useState([]);
   const [users, setUsers] = useState([]);
@@ -20,7 +22,7 @@ const Settings = () => {
   const [settings, setSettings] = useState({
     restaurantName: "", address: "", phone: "", wifiPassword: "",
     serviceChargeType: "percent", serviceChargeValue: 0, receiptFooter: "",
-    serviceChargeType: "percent", serviceChargeValue: 0, receiptFooter: "",
+
     printerReceiptIP: "",
     eskiz_email: "", eskiz_password: "", eskiz_nickname: "4546",
     telegram_bot_token: "", telegram_chat_id: "", telegram_auto_send: "false" // YANGI
@@ -176,11 +178,14 @@ const Settings = () => {
           <button onClick={() => setActiveTab('license')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'license' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Key size={20} /> Litsenziya</button>
 
           <button onClick={() => setActiveTab('database')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'database' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Database size={20} /> Baza va Tizim</button>
+          <button onClick={() => setActiveTab('about')} className={`w-full text-left px-4 py-3 rounded-xl font-medium flex items-center gap-3 transition-colors ${activeTab === 'about' ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'}`}><Store size={20} /> Dastur Haqida</button>
         </div>
         <div className="mt-auto">
-          <button onClick={handleSaveSettings} disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70">
-            {loading ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />} Saqlash
-          </button>
+          {activeTab !== 'about' && (
+            <button onClick={handleSaveSettings} disabled={loading} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-70">
+              {loading ? <RefreshCw size={20} className="animate-spin" /> : <Save size={20} />} Saqlash
+            </button>
+          )}
         </div>
       </div>
 
@@ -446,7 +451,7 @@ const Settings = () => {
                 <span className={`px-3 py-1 rounded-full text-sm font-bold ${licenseInfo.active ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
                   {licenseInfo.active ? 'FAOL' : 'FAOL EMAS'}
                 </span>
-                {licenseInfo.expiry && <span className="text-sm text-gray-500">Muddat: {new Date(licenseInfo.expiry).toLocaleDateString()}</span>}
+                {licenseInfo.expiry && <span className="text-sm text-gray-500">Muddat: {formatDate(licenseInfo.expiry)}</span>}
               </div>
 
               {!licenseInfo.active && (
@@ -514,6 +519,74 @@ const Settings = () => {
         message={modal.message}
         title="Tasdiqlang"
       />
+      {activeTab === 'about' && (
+        <div className="w-full h-full flex flex-col items-center justify-center min-h-[600px]">
+
+          <div className="relative bg-white rounded-[40px] shadow-2xl overflow-hidden w-full max-w-4xl border border-gray-100 transform transition-all hover:scale-[1.01] duration-500">
+
+            <div className="absolute top-0 w-full h-48 bg-gradient-to-r from-blue-700 via-indigo-600 to-purple-700"></div>
+
+            <div className="absolute top-8 right-8 text-white/20">
+              <Store size={180} />
+            </div>
+
+            <div className="relative z-10 pt-24 px-12 pb-12">
+              <div className="flex flex-col items-center text-center">
+                <div className="w-40 h-40 bg-white rounded-[30px] shadow-xl flex items-center justify-center mb-6 ring-8 ring-white/50">
+                  <div className="w-32 h-32 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-[20px] flex items-center justify-center text-white shadow-inner">
+                    <Store size={64} />
+                  </div>
+                </div>
+
+                <h2 className="text-5xl font-black text-gray-800 mb-2 tracking-tight">{APP_INFO.name}</h2>
+                <div className="flex items-center gap-3 mb-10">
+                  <span className="px-4 py-1.5 rounded-full bg-blue-50 text-blue-600 font-bold border border-blue-100 text-sm tracking-wide shadow-sm">
+                    {APP_INFO.version}
+                  </span>
+                  <span className="px-4 py-1.5 rounded-full bg-purple-50 text-purple-600 font-bold border border-purple-100 text-sm tracking-wide shadow-sm">
+                    PRO
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-6 w-full max-w-3xl">
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:bg-white hover:shadow-xl hover:border-blue-200 transition-all duration-300 group text-left">
+                    <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider flex items-center gap-2">
+                      <Users size={14} className="text-blue-500" /> Yaratuvchi
+                    </p>
+                    <p className="text-xl font-bold text-gray-800 group-hover:text-blue-600 transition-colors">{APP_INFO.creator}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:bg-white hover:shadow-xl hover:border-green-200 transition-all duration-300 group text-left">
+                    <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider flex items-center gap-2">
+                      <MessageSquare size={14} className="text-green-500" /> Aloqa
+                    </p>
+                    <p className="text-xl font-bold text-gray-800 group-hover:text-green-600 transition-colors">{APP_INFO.phone}</p>
+                  </div>
+
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:bg-white hover:shadow-xl hover:border-purple-200 transition-all duration-300 group text-left">
+                    <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider flex items-center gap-2">
+                      <Send size={14} className="text-purple-500" /> Veb-sayt
+                    </p>
+                    <a href={`https://${APP_INFO.website}`} target="_blank" rel="noreferrer" className="text-xl font-bold text-gray-800 group-hover:text-purple-600 transition-colors hover:underline">{APP_INFO.website}</a>
+                  </div>
+
+                  <div className="bg-gray-50 p-6 rounded-3xl border border-gray-100 hover:bg-white hover:shadow-xl hover:border-orange-200 transition-all duration-300 group text-left">
+                    <p className="text-xs font-bold text-gray-400 uppercase mb-2 tracking-wider flex items-center gap-2">
+                      <Store size={14} className="text-orange-500" /> Ishga tushirilgan
+                    </p>
+                    <p className="text-xl font-bold text-gray-800 group-hover:text-orange-600 transition-colors">{APP_INFO.since}-yil</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-gray-50 px-12 py-6 border-t border-gray-100 flex justify-between items-center text-sm font-medium text-gray-400">
+              <p>© {new Date().getFullYear()} {APP_INFO.creator}</p>
+              <p>Barcha huquqlar himoyalangan</p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

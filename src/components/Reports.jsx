@@ -9,6 +9,7 @@ import {
   ShoppingBag, Search, ChevronRight, ArrowUpRight, ArrowDownRight, Trash2, Send
 } from 'lucide-react';
 import { useGlobal } from '../context/GlobalContext';
+import { formatDate, formatTime, formatDateTime } from '../utils/dateUtils';
 
 const COLORS = ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6']; // Moviy, Yashil, Sariq, Qizil, Binafsha
 
@@ -87,8 +88,8 @@ const Reports = () => {
       const date = new Date(sale.date);
       return [
         sale.check_number || sale.id,
-        date.toLocaleDateString(),
-        date.toLocaleTimeString(),
+        formatDate(date),
+        formatTime(date),
         `"${sale.items_json ? JSON.parse(sale.items_json)[0]?.destination || 'Stol' : 'Stol'}"`, // Stol raqami json ichida bo'lmasa oddiy
         `"${sale.waiter_name || 'Kassir'}"`,
         sale.guest_count || 0,
@@ -180,38 +181,38 @@ const Reports = () => {
 
   // 1. DASHBOARD TAB
   const renderDashboard = () => (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div className="space-y-4 animate-in fade-in duration-300">
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start">
           <div>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">Jami Savdo</p>
-            <h3 className="text-3xl font-black text-gray-800 mt-2">{stats.totalRevenue.toLocaleString()} <span className="text-sm text-gray-400 font-normal">so'm</span></h3>
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Jami Savdo</p>
+            <h3 className="text-2xl font-black text-gray-800 mt-1">{stats.totalRevenue.toLocaleString()} <span className="text-xs text-gray-400 font-normal">so'm</span></h3>
           </div>
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-xl"><DollarSign size={24} /></div>
+          <div className="p-2 bg-blue-50 text-blue-600 rounded-xl"><DollarSign size={20} /></div>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start">
           <div>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">Cheklar Soni</p>
-            <h3 className="text-3xl font-black text-gray-800 mt-2">{stats.totalOrders} <span className="text-sm text-gray-400 font-normal">ta</span></h3>
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">Cheklar Soni</p>
+            <h3 className="text-2xl font-black text-gray-800 mt-1">{stats.totalOrders} <span className="text-xs text-gray-400 font-normal">ta</span></h3>
           </div>
-          <div className="p-3 bg-green-50 text-green-600 rounded-xl"><ShoppingBag size={24} /></div>
+          <div className="p-2 bg-green-50 text-green-600 rounded-xl"><ShoppingBag size={20} /></div>
         </div>
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start">
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex justify-between items-start sm:col-span-2 lg:col-span-1">
           <div>
-            <p className="text-gray-400 text-sm font-bold uppercase tracking-wider">O'rtacha Chek</p>
-            <h3 className="text-3xl font-black text-gray-800 mt-2">{stats.avgCheck.toLocaleString()} <span className="text-sm text-gray-400 font-normal">so'm</span></h3>
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-wider">O'rtacha Chek</p>
+            <h3 className="text-2xl font-black text-gray-800 mt-1">{stats.avgCheck.toLocaleString()} <span className="text-xs text-gray-400 font-normal">so'm</span></h3>
           </div>
-          <div className="p-3 bg-orange-50 text-orange-600 rounded-xl"><TrendingUp size={24} /></div>
+          <div className="p-2 bg-orange-50 text-orange-600 rounded-xl"><TrendingUp size={20} /></div>
         </div>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-96">
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 h-auto">
         {/* Hourly Trend */}
-        <div className="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="font-bold text-gray-700 mb-6 flex items-center gap-2">
-            <Calendar size={18} /> Soatbay Savdo Dinamikasi
+        <div className="xl:col-span-2 bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-80">
+          <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 text-sm">
+            <Calendar size={16} /> Soatbay Savdo Dinamikasi
           </h3>
           <div className="flex-1 w-full min-h-0">
             <ResponsiveContainer width="100%" height="100%">
@@ -223,8 +224,8 @@ const Reports = () => {
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fontSize: 12 }} />
-                <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 12 }} />
+                <XAxis dataKey="hour" tickFormatter={(h) => `${h}:00`} tick={{ fontSize: 10 }} />
+                <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 10 }} />
                 <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} labelFormatter={(label) => `${label}:00`} />
                 <Area type="monotone" dataKey="amount" stroke="#3B82F6" fillOpacity={1} fill="url(#colorAmount)" strokeWidth={3} />
               </AreaChart>
@@ -233,9 +234,9 @@ const Reports = () => {
         </div>
 
         {/* Payment Methods */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col">
-          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2">
-            <CreditCard size={18} /> To'lov Turlari
+        <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-80">
+          <h3 className="font-bold text-gray-700 mb-2 flex items-center gap-2 text-sm">
+            <CreditCard size={16} /> To'lov Turlari
           </h3>
           <div className="flex-1 w-full min-h-0 relative">
             <ResponsiveContainer width="100%" height="100%">
@@ -244,8 +245,8 @@ const Reports = () => {
                   data={stats.paymentMethods}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={50}
+                  outerRadius={70}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -254,14 +255,14 @@ const Reports = () => {
                   ))}
                 </Pie>
                 <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} />
-                <Legend verticalAlign="bottom" height={36} />
+                <Legend verticalAlign="bottom" height={36} wrapperStyle={{ fontSize: '10px' }} />
               </PieChart>
             </ResponsiveContainer>
             {/* Center Text */}
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none pb-8">
               <div className="text-center">
-                <span className="text-xs text-gray-400 font-bold block">JAMI</span>
-                <span className="text-sm font-bold text-gray-800">{stats.totalRevenue.toLocaleString()}</span>
+                <span className="text-[10px] text-gray-400 font-bold block">JAMI</span>
+                <span className="text-xs font-bold text-gray-800">{stats.totalRevenue.toLocaleString()}</span>
               </div>
             </div>
           </div>
@@ -269,16 +270,16 @@ const Reports = () => {
       </div>
 
       {/* Sales Trend (30 Days) */}
-      <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-80 mt-6">
-        <h3 className="font-bold text-gray-700 mb-6 flex items-center gap-2">
-          <Calendar size={18} /> Oxirgi 30 kunlik dinamika
+      <div className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100 flex flex-col h-64 mt-4">
+        <h3 className="font-bold text-gray-700 mb-4 flex items-center gap-2 text-sm">
+          <Calendar size={16} /> Oxirgi 30 kunlik dinamika
         </h3>
         <div className="flex-1 w-full min-h-0">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={trendData}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-              <XAxis dataKey="day" tickFormatter={(d) => d.slice(5)} tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 12 }} />
+              <XAxis dataKey="day" tickFormatter={(d) => d.slice(5)} tick={{ fontSize: 10 }} />
+              <YAxis tickFormatter={(val) => `${val / 1000}k`} tick={{ fontSize: 10 }} />
               <Tooltip formatter={(val) => val.toLocaleString() + " so'm"} labelFormatter={(label) => label} />
               <Bar dataKey="total" fill="#3B82F6" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -375,8 +376,8 @@ const Reports = () => {
             <tr key={sale.id} className="hover:bg-gray-50 transition-colors">
               <td className="px-6 py-4 font-mono text-gray-500 text-sm">#{sale.check_number || sale.id}</td>
               <td className="px-6 py-4 text-sm text-gray-600">
-                <div className="font-bold text-gray-800">{new Date(sale.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                <div className="text-xs text-gray-400">{new Date(sale.date).toLocaleDateString()}</div>
+                <div className="font-bold text-gray-800">{formatTime(sale.date)}</div>
+                <div className="text-xs text-gray-400">{formatDate(sale.date)}</div>
               </td>
               <td className="px-6 py-4 font-medium text-gray-800">{sale.waiter_name || "Kassir"}</td>
               <td className="px-6 py-4 text-center text-sm font-bold text-blue-600">{sale.guest_count || '-'}</td>
@@ -420,8 +421,8 @@ const Reports = () => {
               <tr key={order.id} className="hover:bg-red-50 transition-colors">
                 <td className="px-6 py-4 font-mono text-gray-500 text-sm">#{order.table_id}</td>
                 <td className="px-6 py-4 text-sm text-gray-600">
-                  <div className="font-bold text-gray-800">{new Date(order.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
-                  <div className="text-xs text-gray-400">{new Date(order.date).toLocaleDateString()}</div>
+                  <div className="font-bold text-gray-800">{formatTime(order.date)}</div>
+                  <div className="text-xs text-gray-400">{formatDate(order.date)}</div>
                 </td>
                 <td className="px-6 py-4 font-medium text-gray-800">{order.waiter_name}</td>
                 <td className="px-6 py-4 text-sm text-red-500 font-medium italic">"{order.reason}"</td>
@@ -514,7 +515,7 @@ const Reports = () => {
               {activeTab === 'trash' && "Bekor Qilinganlar Tarixi"}
             </h1>
             <p className="text-gray-400 text-xs font-bold mt-0.5 flex items-center gap-1">
-              <Calendar size={12} /> {new Date(dateRange.startDate).toLocaleDateString()} — {new Date(dateRange.endDate).toLocaleDateString()}
+              <Calendar size={12} /> {formatDate(dateRange.startDate)} — {formatDate(dateRange.endDate)}
             </p>
           </div>
 

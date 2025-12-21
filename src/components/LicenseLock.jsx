@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Lock, FileText, RefreshCw, ShieldAlert, PcCase } from 'lucide-react';
+import { formatDate } from '../utils/dateUtils';
 
 const LicenseLock = ({ reason, onUnlock, expiry, hwid }) => {
     const [loading, setLoading] = useState(false);
@@ -53,7 +54,7 @@ const LicenseLock = ({ reason, onUnlock, expiry, hwid }) => {
                 return (
                     <div className="text-center mb-4">
                         <p className="text-red-500 font-bold text-lg">⚠️ Obuna muddati tugagan!</p>
-                        <p className="text-gray-600">Amal qilish muddati: {expiry ? new Date(expiry).toLocaleDateString() : 'Noma\'lum'}</p>
+                        <p className="text-gray-600">Amal qilish muddati: {expiry ? formatDate(expiry) : 'Noma\'lum'}</p>
                     </div>
                 );
             case 'hwid_mismatch':

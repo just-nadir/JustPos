@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User, Calendar, FileText, ArrowDownLeft, ArrowUpRight, Wallet, Search, CheckCircle } from 'lucide-react';
+import { formatDate, formatDateTime } from '../utils/dateUtils';
 
 const DebtorsManagement = () => {
   const [debtors, setDebtors] = useState([]);
@@ -15,13 +16,13 @@ const DebtorsManagement = () => {
       const { ipcRenderer } = window.electron;
       const data = await ipcRenderer.invoke('get-debtors');
       setDebtors(data);
-      
+
       if (activeDebtor) {
         const updated = data.find(d => d.id === activeDebtor.id);
         if (updated) {
-            setActiveDebtor(updated);
+          setActiveDebtor(updated);
         } else {
-            setActiveDebtor(null); 
+          setActiveDebtor(null);
         }
       }
     } catch (err) { console.error(err); }
@@ -45,17 +46,17 @@ const DebtorsManagement = () => {
   }, [activeDebtor]);
 
   useEffect(() => {
-      if(isSuccess) {
-          const timer = setTimeout(() => setIsSuccess(false), 3000);
-          return () => clearTimeout(timer);
-      }
+    if (isSuccess) {
+      const timer = setTimeout(() => setIsSuccess(false), 3000);
+      return () => clearTimeout(timer);
+    }
   }, [isSuccess]);
 
   // 3. Qarzni to'lash
   const handlePayDebt = async (e) => {
     e.preventDefault();
     if (!payAmount || Number(payAmount) <= 0) return;
-    
+
     if (!window.electron) return;
 
     try {
@@ -65,7 +66,7 @@ const DebtorsManagement = () => {
         amount: Number(payAmount),
         comment: "Qarz to'lovi"
       });
-      
+
       setPayAmount('');
       loadDebtors();
       loadHistory(activeDebtor.id);
@@ -76,21 +77,17 @@ const DebtorsManagement = () => {
   // Sana formatlash va ranglash
   const formatDueDate = (dueDate) => {
     if (!dueDate) return null;
-    
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const due = new Date(dueDate);
     due.setHours(0, 0, 0, 0);
-    
+
     const isOverdue = due < today;
-    
-    const formatted = new Date(dueDate).toLocaleDateString('uz-UZ', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
-    });
-    
+
+    const formatted = formatDate(dueDate);
+
     return { formatted, isOverdue };
   };
 
@@ -98,9 +95,9 @@ const DebtorsManagement = () => {
     <div className="flex w-full h-full bg-gray-100 relative">
       {/* Toast Notification */}
       {isSuccess && (
-          <div className="absolute top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-top duration-300">
-              <CheckCircle size={20} /> To'lov qabul qilindi!
-          </div>
+        <div className="absolute top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 animate-in slide-in-from-top duration-300">
+          <CheckCircle size={20} /> To'lov qabul qilindi!
+        </div>
       )}
 
       {/* 2-QISM: RO'YXAT (Oq fon) */}
@@ -109,18 +106,18 @@ const DebtorsManagement = () => {
           <h2 className="text-xl font-bold text-gray-800 mb-1">Qarzdorlar</h2>
           <p className="text-sm text-gray-400">Jami: {debtors.length} kishi</p>
         </div>
-        
+
         <div className="flex-1 overflow-y-auto p-3 space-y-2">
           {debtors.map(debtor => {
             const dueDateInfo = formatDueDate(debtor.next_due_date);
-            
+
             return (
               <button
                 key={debtor.id}
                 onClick={() => setActiveDebtor(debtor)}
                 className={`w-full p-4 rounded-xl text-left transition-all group border-2 
-                  ${activeDebtor?.id === debtor.id 
-                    ? 'bg-red-50 border-red-200 shadow-sm' 
+                  ${activeDebtor?.id === debtor.id
+                    ? 'bg-red-50 border-red-200 shadow-sm'
                     : 'bg-white border-transparent hover:bg-gray-50'}`}
               >
                 <div className="flex justify-between items-start mb-1">
@@ -134,12 +131,11 @@ const DebtorsManagement = () => {
                     {debtor.debt.toLocaleString()}
                   </span>
                 </div>
-                
+
                 {/* Muddat */}
                 {dueDateInfo && (
-                  <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${
-                    dueDateInfo.isOverdue ? 'text-red-600' : 'text-blue-600'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-xs font-medium mt-1 ${dueDateInfo.isOverdue ? 'text-red-600' : 'text-blue-600'
+                    }`}>
                     <Calendar size={12} />
                     <span>Muddat: {dueDateInfo.formatted}</span>
                   </div>
@@ -147,11 +143,11 @@ const DebtorsManagement = () => {
               </button>
             );
           })}
-          
+
           {debtors.length === 0 && (
             <div className="text-center py-10 text-gray-400 flex flex-col items-center">
-               <Wallet size={40} className="mb-2 opacity-20" />
-               Qarzdorlar yo'q
+              <Wallet size={40} className="mb-2 opacity-20" />
+              Qarzdorlar yo'q
             </div>
           )}
         </div>
@@ -169,7 +165,7 @@ const DebtorsManagement = () => {
                   <span className="flex items-center gap-1"><User size={14} /> {activeDebtor.phone}</span>
                 </div>
               </div>
-              
+
               <div className="text-right">
                 <p className="text-xs text-gray-500 mb-1 uppercase tracking-wider">Joriy Qarz</p>
                 <p className="text-4xl font-bold text-red-600">{activeDebtor.debt.toLocaleString()} <span className="text-lg text-gray-400 font-normal">so'm</span></p>
@@ -178,24 +174,24 @@ const DebtorsManagement = () => {
 
             {/* Action Area (Payment) */}
             <div className="px-8 py-6 bg-white border-b border-gray-200">
-                <form onSubmit={handlePayDebt} className="flex gap-3 items-end">
-                  <div className="flex-1">
-                    <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Qarzni so'ndirish</label>
-                    <div className="relative">
-                        <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-                        <input 
-                            type="number" 
-                            placeholder="Summa kiriting..." 
-                            value={payAmount}
-                            onChange={(e) => setPayAmount(e.target.value)}
-                            className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-lg font-bold text-gray-700"
-                        />
-                    </div>
+              <form onSubmit={handlePayDebt} className="flex gap-3 items-end">
+                <div className="flex-1">
+                  <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Qarzni so'ndirish</label>
+                  <div className="relative">
+                    <Wallet className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                      type="number"
+                      placeholder="Summa kiriting..."
+                      value={payAmount}
+                      onChange={(e) => setPayAmount(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-100 transition-all text-lg font-bold text-gray-700"
+                    />
                   </div>
-                  <button type="submit" className="bg-green-500 text-white px-8 py-3.5 rounded-xl font-bold text-sm hover:bg-green-600 shadow-md active:scale-95 transition-transform h-[52px]">
-                    To'lash
-                  </button>
-                </form>
+                </div>
+                <button type="submit" className="bg-green-500 text-white px-8 py-3.5 rounded-xl font-bold text-sm hover:bg-green-600 shadow-md active:scale-95 transition-transform h-[52px]">
+                  To'lash
+                </button>
+              </form>
             </div>
 
             {/* History List */}
@@ -203,7 +199,7 @@ const DebtorsManagement = () => {
               <h3 className="font-bold text-gray-500 mb-4 flex items-center gap-2 text-sm uppercase tracking-wider">
                 <FileText size={16} /> Operatsiyalar Tarixi
               </h3>
-              
+
               <div className="space-y-3 max-w-4xl">
                 {history.map((item) => (
                   <div key={item.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex justify-between items-center hover:shadow-md transition-shadow">
@@ -214,8 +210,8 @@ const DebtorsManagement = () => {
                       <div>
                         <p className="font-bold text-gray-800 text-lg">{item.comment || (item.type === 'debt' ? 'Nasiya' : 'To\'lov')}</p>
                         <div className="flex items-center gap-2 text-xs text-gray-400 font-medium">
-                          <Calendar size={12} /> 
-                          {new Date(item.date).toLocaleString()}
+                          <Calendar size={12} />
+                          {formatDateTime(item.date)}
                         </div>
                       </div>
                     </div>
@@ -224,7 +220,7 @@ const DebtorsManagement = () => {
                     </div>
                   </div>
                 ))}
-                
+
                 {history.length === 0 && <p className="text-gray-400 text-center py-10 italic">Hozircha tarix mavjud emas</p>}
               </div>
             </div>

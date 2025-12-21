@@ -74,7 +74,7 @@ const DesktopLayout = () => {
         {/* Orqa fon uchun xira layout */}
         <div className="flex h-screen bg-gray-100 overflow-hidden font-sans blur-sm pointer-events-none">
           <Sidebar activePage={activePage} onNavigate={() => { }} onLogout={handleLogout} user={user} />
-          <div className="flex-1 flex items-center justify-center p-10">
+          <div className="flex-1 flex items-center justify-center p-4">
             <h1 className="text-4xl font-black text-gray-300">SMENA OCHILMAGAN</h1>
           </div>
         </div>

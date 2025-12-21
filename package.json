@@ -3,7 +3,7 @@
   "private": true,
   "version": "1.2.0",
   "main": "electron/main.cjs",
-  "description": "Nadpos Restoran POS tizimi",
+  "description": "NadPOS Restoran POS tizimi",
   "author": "Ares Boston Tech LLC",
   "type": "module",
   "scripts": {
@@ -71,7 +71,7 @@
   },
   "build": {
     "appId": "com.mypos.app",
-    "productName": "Restoran POS",
+    "productName": "NadPOS Restoran",
     "directories": {
       "output": "release"
     },
