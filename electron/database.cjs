@@ -15,6 +15,10 @@ console.log("📂 BAZA MANZILI:", dbPath);
 const db = new Database(dbPath, { verbose: null });
 db.pragma('journal_mode = WAL');
 db.pragma('synchronous = NORMAL');
+
+// Register UUID function for SQLite
+db.function('uuid', () => crypto.randomUUID());
+
 let changeListeners = [];
 
 function onChange(callback) {
@@ -384,6 +388,103 @@ function initDB() {
     }
 
     log.info("Bazalar tekshirildi va yuklandi.");
+
+    // --- MIGRATSIYA: Offline-First Sync ---
+    db.prepare(`
+        CREATE TABLE IF NOT EXISTS sync_queue (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            table_name TEXT NOT NULL,
+            record_id TEXT,
+            action TEXT NOT NULL,
+            data TEXT,
+            created_at INTEGER DEFAULT (cast(strftime('%s','now') * 1000 as integer)),
+            is_processed INTEGER DEFAULT 0
+        )
+    `).run();
+
+    const syncTables = [
+      'halls', 'tables', 'categories', 'products', 'order_items', 'sales', 'sale_items',
+      'customers', 'debt_history', 'customer_debts', 'cancelled_orders', 'users',
+      'settings', 'kitchens', 'sms_templates', 'shifts'
+    ];
+
+    syncTables.forEach(tableName => {
+      try {
+        const cols = db.prepare(`PRAGMA table_info(${tableName})`).all();
+
+        // 1. Add server_id
+        if (!cols.some(c => c.name === 'server_id')) {
+          db.prepare(`ALTER TABLE ${tableName} ADD COLUMN server_id TEXT`).run(); // Unique constraint separately or validated? SQLite ADD COLUMN UNIQUE is tricky with existing data, we can add index later.
+          db.prepare(`UPDATE ${tableName} SET server_id = uuid() WHERE server_id IS NULL`).run();
+          try { db.prepare(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${tableName}_server_id ON ${tableName}(server_id)`).run(); } catch (e) { }
+          console.log(`✅ ${tableName} jadvaliga server_id qo'shildi.`);
+        }
+
+        // 2. Add is_synced
+        if (!cols.some(c => c.name === 'is_synced')) {
+          db.prepare(`ALTER TABLE ${tableName} ADD COLUMN is_synced INTEGER DEFAULT 0`).run();
+        }
+
+        // 3. Add updated_at
+        if (!cols.some(c => c.name === 'updated_at')) {
+          db.prepare(`ALTER TABLE ${tableName} ADD COLUMN updated_at INTEGER`).run();
+          db.prepare(`UPDATE ${tableName} SET updated_at = (cast(strftime('%s','now') * 1000 as integer))`).run();
+        }
+
+        // 4. TRIGGERS (Remove old ones first)
+        db.prepare(`DROP TRIGGER IF EXISTS tr_${tableName}_insert`).run();
+        db.prepare(`DROP TRIGGER IF EXISTS tr_${tableName}_update`).run();
+        db.prepare(`DROP TRIGGER IF EXISTS tr_${tableName}_delete`).run();
+
+        // INSERT Trigger
+        db.prepare(`
+          CREATE TRIGGER tr_${tableName}_insert AFTER INSERT ON ${tableName}
+          BEGIN
+            -- Generate server_id if missing
+            UPDATE ${tableName} 
+            SET server_id = uuid(), 
+                updated_at = (cast(strftime('%s','now') * 1000 as integer)),
+                is_synced = 0
+            WHERE id = NEW.id AND server_id IS NULL;
+
+            -- Log to sync_queue (fetch the potentially new server_id)
+            INSERT INTO sync_queue (table_name, record_id, action, created_at)
+            VALUES ('${tableName}', 
+                    COALESCE(NEW.server_id, (SELECT server_id FROM ${tableName} WHERE id = NEW.id)), 
+                    'INSERT', 
+                    (cast(strftime('%s','now') * 1000 as integer)));
+          END
+        `).run();
+
+        // UPDATE Trigger
+        db.prepare(`
+          CREATE TRIGGER tr_${tableName}_update AFTER UPDATE ON ${tableName}
+          WHEN NEW.is_synced = 0 AND (NEW.server_id IS OLD.server_id) -- Ignore sync updates
+          BEGIN
+             UPDATE ${tableName} 
+             SET updated_at = (cast(strftime('%s','now') * 1000 as integer)),
+                 is_synced = 0
+             WHERE id = NEW.id;
+
+             INSERT INTO sync_queue (table_name, record_id, action, created_at)
+             VALUES ('${tableName}', OLD.server_id, 'UPDATE', (cast(strftime('%s','now') * 1000 as integer)));
+          END
+        `).run();
+
+        // DELETE Trigger
+        db.prepare(`
+          CREATE TRIGGER tr_${tableName}_delete AFTER DELETE ON ${tableName}
+          BEGIN
+             INSERT INTO sync_queue (table_name, record_id, action, created_at)
+             VALUES ('${tableName}', OLD.server_id, 'DELETE', (cast(strftime('%s','now') * 1000 as integer)));
+          END
+        `).run();
+
+      } catch (err) {
+        console.error(`Status sync error for ${tableName}:`, err);
+      }
+    });
+    console.log("✅ Offline Sync tizimi ishga tushdi (Triggers & Queue).");
 
   } catch (err) {
     log.error("Baza yaratishda xatolik:", err);
